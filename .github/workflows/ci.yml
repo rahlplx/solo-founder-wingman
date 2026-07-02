@@ -10,12 +10,17 @@ on:
     paths:
       - "founder-os/**"
 
+permissions:
+  contents: read
+
 jobs:
   validate-json:
     name: Validate JSON config files
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Validate policy.json, .mcp.json, hooks.json, plugin.json, settings.json
         run: |
           set -euo pipefail
@@ -31,9 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: "npm"
+          cache-dependency-path: founder-os/package-lock.json
       - name: Install dev dependencies
         working-directory: founder-os
         run: npm install
@@ -52,7 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        # Pinned to the 2.0.0 release commit, not the mutable @master ref.
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38
         with:
           scandir: "./founder-os/bin"

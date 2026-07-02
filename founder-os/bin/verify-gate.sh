@@ -36,7 +36,24 @@ fi
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
-if [[ ! -f package.json ]] || ! grep -q '"test"' package.json 2>/dev/null; then
+# Check specifically for scripts.test, not just the substring "test" anywhere
+# in package.json (a bare `grep -q '"test"'` would false-positive on e.g. a
+# "keywords": ["test"] field with no actual test script, causing `npm test`
+# to fail with "Missing script" and the founder seeing a misleading
+# "tests are failing" block).
+HAS_TEST_SCRIPT="false"
+if [[ -f package.json ]]; then
+  HAS_TEST_SCRIPT="$(node -e '
+    try {
+      const pkg = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
+      process.stdout.write(pkg.scripts && pkg.scripts.test ? "true" : "false");
+    } catch (e) {
+      process.stdout.write("false");
+    }
+  ')"
+fi
+
+if [[ "$HAS_TEST_SCRIPT" != "true" ]]; then
   # No test command configured yet -- nothing to gate on. Allow to stop.
   echo '{"decision":"allow"}'
   exit 0
@@ -49,7 +66,9 @@ if npm test --silent > "$TEST_OUT" 2>&1; then
   echo '{"decision":"allow"}'
   exit 0
 else
-  REASON="Tests are failing, so this isn't verifiably done yet. Fix the failures below before finishing:\n\n$(tail -n 40 "$TEST_OUT")"
+  # $'...' (ANSI-C quoting) so \n is an actual newline, not the literal two
+  # characters "\" and "n" ending up in the JSON reason text.
+  REASON=$'Tests are failing, so this isn\'t verifiably done yet. Fix the failures below before finishing:\n\n'"$(tail -n 40 "$TEST_OUT")"
   node -e '
     const reason = process.argv[1];
     process.stdout.write(JSON.stringify({decision:"block",reason}));

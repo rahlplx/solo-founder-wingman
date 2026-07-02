@@ -1,17 +1,19 @@
 {
-  "_comment": "Machine-readable rule set for bin/policy-check.js and adapters/opencode/plugin.ts. Kept as flat JSON so it can be parsed with jq or any language's built-in JSON support, no extra dependencies. Rule patterns adapted from roboticforce/agent-guardrails, CodyLunders/claude-code-hooks-library, kornysietsma/claude-code-permissions-hook, and AperionAI/shield (all MIT/Apache-2.0) -- not written from scratch. IMPORTANT LIMITATION (confirmed by four independent external audits, July 2026): regex matching on the final command string cannot see through shell preprocessing -- quote removal, $IFS word-splitting tricks, parameter expansion slicing, and multi-layer obfuscation can all defeat a pattern match in principle. The 'obfuscation' category below raises the bar against the most common/cheap evasion techniques (subshells hiding a keyword, IFS manipulation, eval, encoded-blob-to-shell) but this is a best-effort mitigation, not a proof of coverage. This limitation is inherent to regex-based interception as a category, not unique to this implementation -- see tests/policy-cases.json for the adversarial cases this is verified against.",
-  "version": "0.1.0",
+  "_comment": "Machine-readable rule set for bin/policy-check.js and adapters/opencode/plugin.ts. Kept as flat JSON so it can be parsed with jq or any language's built-in JSON support, no extra dependencies. Rule patterns adapted from roboticforce/agent-guardrails, CodyLunders/claude-code-hooks-library, kornysietsma/claude-code-permissions-hook, and AperionAI/shield (all MIT/Apache-2.0) -- not written from scratch. IMPORTANT LIMITATION (confirmed by four independent external audits, July 2026): regex matching on the final command string cannot see through shell preprocessing -- quote removal, $IFS word-splitting tricks, parameter expansion slicing, and multi-layer obfuscation can all defeat a pattern match in principle. The 'obfuscation' category below raises the bar against the most common/cheap evasion techniques (subshells hiding a keyword, IFS manipulation, eval, encoded-blob-to-shell) but this is a best-effort mitigation, not a proof of coverage. This limitation is inherent to regex-based interception as a category, not unique to this implementation -- see tests/policy-cases.json for the adversarial cases this is verified against. The 'scope' field on each rule controls which extracted-string origins it's tested against: 'bash' rules only run against Bash commands, never against Edit/Write/MultiEdit file content -- without this, editing this very policy engine's own test fixture (which contains literal strings like \"rm -rf node_modules\" as JSON data) would trip the destructive_ops rules and block the edit. 'any' is for rules that should also catch a secret accidentally pasted into a file, not just typed as a command.",
+  "version": "0.2.0",
   "rules": [
     {
       "id": "destructive-rm-rf",
       "category": "destructive_ops",
-      "pattern": "rm\\s+.*(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR]|--recursive\\b.*--force\\b|--force\\b.*--recursive\\b|(?<!\\S)-[rR](?!\\S).*(?<!\\S)-f(?!\\S)|(?<!\\S)-f(?!\\S).*(?<!\\S)-[rR](?!\\S))",
+      "scope": "bash",
+      "pattern": "\\brm\\b(?=.*(?:^|\\s)(-[a-zA-Z]*[rR][a-zA-Z]*\\b|--recursive\\b))(?=.*(?:^|\\s)(-[a-zA-Z]*f[a-zA-Z]*\\b|--force\\b))",
       "action": "block",
       "message": "This deletes files/folders permanently with no undo. What exactly is being deleted and why?"
     },
     {
       "id": "destructive-git-force-push",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "git\\s+push\\s+.*(--force(?!-with-lease)|(?<!-)-f\\b)",
       "action": "block",
       "message": "Force-push can overwrite remote history other people (or your future self) depend on. Use --force-with-lease if you're sure, or explain why this is safe."
@@ -19,6 +21,7 @@
     {
       "id": "destructive-git-reset-hard",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "git\\s+reset\\s+--hard",
       "action": "confirm",
       "message": "This discards uncommitted work with no undo. Confirm nothing important is uncommitted first."
@@ -26,6 +29,7 @@
     {
       "id": "destructive-git-branch-delete",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "git\\s+branch\\s+-D\\b",
       "action": "confirm",
       "message": "Force-deleting a branch discards its commits if unmerged."
@@ -33,6 +37,7 @@
     {
       "id": "destructive-sql-drop",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "\\bDROP\\s+(TABLE|DATABASE|SCHEMA)\\b",
       "flags": "i",
       "action": "block",
@@ -41,6 +46,7 @@
     {
       "id": "destructive-sql-unscoped-write",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "\\b(DELETE\\s+FROM\\s+\\w+|UPDATE\\s+\\w+\\s+SET)\\b(?!.*\\bWHERE\\b)",
       "flags": "i",
       "action": "confirm",
@@ -49,6 +55,7 @@
     {
       "id": "destructive-terraform-destroy",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "terraform\\s+destroy",
       "action": "block",
       "message": "This tears down real infrastructure."
@@ -56,6 +63,7 @@
     {
       "id": "destructive-k8s-delete",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "kubectl\\s+delete\\s+(namespace|-f\\s)",
       "action": "confirm",
       "message": "This deletes a namespace or applies a broad delete manifest."
@@ -63,6 +71,7 @@
     {
       "id": "destructive-chmod-777",
       "category": "destructive_ops",
+      "scope": "bash",
       "pattern": "chmod\\s+(-R\\s+)?777",
       "action": "confirm",
       "message": "777 makes files world-writable — usually not what you want, even to unblock something quickly."
@@ -70,6 +79,7 @@
     {
       "id": "secrets-read-env-to-output",
       "category": "secrets",
+      "scope": "bash",
       "pattern": "(cat|less|more|head|tail)\\s+.*\\.env\\b",
       "action": "confirm",
       "message": "This would print secret values into the chat log. Consider checking a specific key with grep instead of dumping the whole file."
@@ -77,6 +87,7 @@
     {
       "id": "secrets-git-add-env",
       "category": "secrets",
+      "scope": "bash",
       "pattern": "git\\s+add\\s+.*\\.env(?!\\.example)",
       "action": "block",
       "message": ".env files hold secrets and should never be committed. Add it to .gitignore instead."
@@ -84,28 +95,32 @@
     {
       "id": "secrets-exfil-pattern",
       "category": "secrets",
-      "pattern": "(cat|env|printenv).*(\\||;).*(curl|wget|nc)\\s",
+      "scope": "bash",
+      "pattern": "\\b(cat|env|printenv)\\b.*(\\||;).*\\b(curl|wget|nc)\\b",
       "action": "block",
       "message": "This reads environment/secret values and sends them to a network destination in the same command — blocked pending explicit confirmation of what's being sent where."
     },
     {
       "id": "prod-boundary-destructive-with-prod-flag",
       "category": "prod_boundary",
-      "pattern": "(prod|production).*(drop|delete|truncate|reset|migrate\\s+--force)",
+      "scope": "bash",
+      "pattern": "\\b(prod|production)\\b.*\\b(drop|delete|truncate|reset|migrate\\s+--force)\\b",
       "flags": "i",
-      "action": "block",
-      "message": "This targets something tagged production and is a destructive/irreversible action. Confirm explicitly before this runs against real user data."
+      "action": "confirm",
+      "message": "This mentions something tagged production alongside a destructive-sounding word. Confirm explicitly this is actually a destructive action against production, not e.g. a commit message or unrelated command — this check is a soft keyword match, not a precise one."
     },
     {
       "id": "prod-boundary-stripe-live-key",
       "category": "prod_boundary",
+      "scope": "any",
       "pattern": "sk_live_[A-Za-z0-9]+",
       "action": "confirm",
-      "message": "A live Stripe secret key is present in this command. Live-mode Stripe actions move real money — confirm this is intentional, not a copy-paste from test mode."
+      "message": "A live Stripe secret key is present. Live-mode Stripe actions move real money — confirm this is intentional, not a copy-paste from test mode."
     },
     {
       "id": "cost-cloud-resource-create",
       "category": "cost_sensitive",
+      "scope": "bash",
       "pattern": "(aws\\s+\\w+\\s+create-|gcloud\\s+\\w+\\s+create|az\\s+\\w+\\s+create|terraform\\s+apply)",
       "action": "confirm",
       "message": "This provisions billed cloud infrastructure. Confirm you understand the ongoing cost before this runs."
@@ -113,6 +128,7 @@
     {
       "id": "cost-stripe-live-mode-toggle",
       "category": "cost_sensitive",
+      "scope": "any",
       "pattern": "(stripe.*live.?mode|STRIPE_MODE\\s*=\\s*[\"']?live)",
       "flags": "i",
       "action": "confirm",
@@ -121,6 +137,7 @@
     {
       "id": "obfuscation-substitution-hides-destructive",
       "category": "obfuscation",
+      "scope": "bash",
       "pattern": "(\\$\\([^)]*\\b(rm|dd|mkfs|drop|truncate|delete)\\b[^)]*\\)|`[^`]*\\b(rm|dd|mkfs|drop|truncate|delete)\\b[^`]*`)",
       "flags": "i",
       "action": "block",
@@ -129,13 +146,15 @@
     {
       "id": "obfuscation-ifs-splitting",
       "category": "obfuscation",
-      "pattern": "(\\$IFS\\b|\\bIFS\\s*=)",
+      "scope": "bash",
+      "pattern": "(\\$\\{?IFS\\}?|\\bIFS\\s*=)",
       "action": "confirm",
       "message": "This manipulates IFS (the shell's word-separator variable), which is an unusual, rarely-legitimate way to split a command that can be used to hide its real meaning from simple pattern checks. What is this command actually doing?"
     },
     {
       "id": "obfuscation-eval",
       "category": "obfuscation",
+      "scope": "bash",
       "pattern": "\\beval\\b\\s",
       "action": "confirm",
       "message": "eval executes a dynamically-built string as a command, which this policy engine can't inspect ahead of time. What command does this actually run?"
@@ -143,6 +162,7 @@
     {
       "id": "obfuscation-encoded-pipe-to-shell",
       "category": "obfuscation",
+      "scope": "bash",
       "pattern": "(base64\\s+(-d|--decode)|xxd\\s+-r).*\\|\\s*(sh|bash|zsh|dash)\\b",
       "flags": "i",
       "action": "block",

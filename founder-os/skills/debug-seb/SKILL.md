@@ -19,9 +19,10 @@ with a deterministic fallback for when there's no clear "before."
    paraphrased. **B**efore/after: the last change before it broke, if
    known.
 
-2. **If "last working state" is unknown, run the bisect trick.** Undo the
-   last 3 committed changes one at a time, testing after each, until the
-   bug disappears. That isolates the breaking change without guessing.
+2. **If "last working state" is unknown, bisect the recent history.** Don't
+   stop after an arbitrary number of commits — search backward, testing
+   after each step, until you isolate the actual first bad commit. A fixed
+   3-commit rollback can miss a regression introduced further back.
 
 3. **Diagnose in plain terms what went wrong before fixing** — one or two
    sentences, no code-level jargon the founder can't use.

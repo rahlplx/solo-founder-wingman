@@ -23,9 +23,11 @@ and aren't interchangeable — running one doesn't excuse skipping another.
    subagent persona is a weaker substitute for true cross-model review —
    different model families miss different things, and a persona prompt
    alone doesn't reproduce that. For anything that matters (payments,
-   auth, user data), recommend pasting the code into a genuinely different
-   model provider rather than relying on an in-session "act as reviewer"
-   persona.
+   auth, user data), recommend pasting a redacted excerpt into a genuinely
+   different model provider rather than relying on an in-session "act as
+   reviewer" persona. Always strip secrets, tokens, and user data before
+   exporting anything outside the session — cross-model review is not
+   worth a leak.
 
 4. **Layer 3 — security AI.** Don't fold security review into this same
    pass. Hand off explicitly to `/security-audit` (the LOCK checklist) —

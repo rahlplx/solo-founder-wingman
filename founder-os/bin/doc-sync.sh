@@ -17,14 +17,31 @@ COMMAND="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("
 
 if [[ "$COMMAND" == *"git commit"* ]]; then
   CHANGELOG="$(git rev-parse --show-toplevel 2>/dev/null || echo .)/CHANGELOG.md"
-  if [[ -f "$CHANGELOG" ]]; then
+  # Only append if HEAD's commit timestamp is very recent -- this hook only
+  # knows the *command text* contained "git commit", not whether it actually
+  # succeeded (rejected by a pre-commit hook, or nothing staged). Without
+  # this check, a failed attempt would still append the *previous*
+  # successful commit's message again, as if the failed change had shipped.
+  COMMIT_AGE=999999
+  if git rev-parse HEAD >/dev/null 2>&1; then
+    COMMIT_TS="$(git log -1 --pretty=%ct 2>/dev/null || echo 0)"
+    NOW_TS="$(date +%s)"
+    COMMIT_AGE=$((NOW_TS - COMMIT_TS))
+  fi
+  if [[ -f "$CHANGELOG" && "$COMMIT_AGE" -le 10 ]]; then
     MSG="$(git log -1 --pretty=%s 2>/dev/null || echo "change")"
     DATE="$(date +%Y-%m-%d)"
     TMP="$(mktemp)"
-    awk -v msg="$MSG" -v date="$DATE" '
+    if awk -v msg="$MSG" -v date="$DATE" '
       /^### Added$/ && !done { print; print "- " msg " (" date ")"; done=1; next }
       { print }
-    ' "$CHANGELOG" > "$TMP" && mv "$TMP" "$CHANGELOG"
+      END { exit (done ? 0 : 1) }
+    ' "$CHANGELOG" > "$TMP"; then
+      mv "$TMP" "$CHANGELOG"
+    else
+      echo "doc-sync: CHANGELOG.md doesn't have the expected '### Added' section under [Unreleased] -- skipped auto-append, changelog left untouched" >&2
+      rm -f "$TMP"
+    fi
   fi
 fi
 

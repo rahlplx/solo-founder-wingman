@@ -39,7 +39,7 @@ Exactly the format `verify-path` specifies — one PASS/FAIL line per PATH
 dimension, plain English, then an overall verdict. Never say "done" if any
 dimension is FAIL; say what's broken and that it's being fixed instead.
 
-```
+```text
 Primary flow:     PASS — user can create and view a schedule end-to-end
 Alternate paths:  FAIL — submitting an empty shift crashes the page
 Transitions:      PASS

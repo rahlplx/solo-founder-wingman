@@ -41,6 +41,8 @@ job here is to decide the role before doing the task, not after.
 - Blending roles in one response — fixing CSS but also changing the
   database schema in the same pass.
 - Skipping straight to "Evolve" without a real Review step in between.
-- Treating "DevOps" as license to actually trigger a deploy through the
-  `vercel` MCP server — it's read-only/status-only; deploys happen via
-  `git push` autodeploy.
+- Treating "DevOps" as license to actually trigger a deploy without
+  explicit founder approval — `vercel` is read-only/status-only, but
+  `git push` can still trigger autodeploy; get a yes before any
+  production-affecting push, don't just proceed because it's technically
+  possible.

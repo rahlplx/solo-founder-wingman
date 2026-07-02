@@ -2,8 +2,11 @@
   Generated/maintained by founder-os. If an AGENTS.md already existed (e.g.
   created by this tool's own `/init`), founder-os APPENDS/ENRICHES it rather
   than overwriting — never destroy a host tool's native scaffold.
-  Sections marked [managed by founder-os] are rewritten by bin/doc-sync.sh;
-  everything else is yours to edit freely and will be preserved.
+  Sections marked [managed by founder-os] are maintained by founder-os
+  tooling where implemented -- today, only CHANGELOG.md is auto-appended by
+  bin/doc-sync.sh; these AGENTS.md sections are not yet auto-rewritten and
+  should be kept current by hand until that lands.
+  Everything else in this file is yours to edit freely and will be preserved.
 -->
 
 # Project Rules for AI Agents

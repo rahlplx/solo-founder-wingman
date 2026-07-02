@@ -21,21 +21,27 @@ const FIXTURE_PATH = join(__dirname, "policy-cases.json");
 
 interface TestCase {
   description: string;
-  toolName: "Bash" | "Edit" | "Write";
+  toolName: "Bash" | "Edit" | "Write" | "MultiEdit" | "ApplyPatch";
   command?: string;
   filePath?: string;
   content?: string;
   newString?: string;
+  patchText?: string;
+  platforms?: string[];
   expectDecision: "allow" | "ask" | "deny";
 }
 
 function toOpenCodeToolName(toolName: TestCase["toolName"]): string {
+  if (toolName === "ApplyPatch") return "apply_patch";
   return toolName.toLowerCase();
 }
 
 function buildArgs(testCase: TestCase): Record<string, unknown> {
   if (testCase.toolName === "Bash") {
     return { command: testCase.command };
+  }
+  if (testCase.toolName === "ApplyPatch") {
+    return { patchText: testCase.patchText };
   }
   const args: Record<string, unknown> = { filePath: testCase.filePath };
   if (testCase.content !== undefined) args.content = testCase.content;
@@ -50,7 +56,8 @@ function expectedOpenCodeDecision(expectDecision: TestCase["expectDecision"]): "
 }
 
 function main(): void {
-  const { cases } = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as { cases: TestCase[] };
+  const { cases: allCases } = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as { cases: TestCase[] };
+  const cases = allCases.filter((c) => !c.platforms || c.platforms.includes("opencode"));
   const rules = loadRules();
 
   let pass = 0;

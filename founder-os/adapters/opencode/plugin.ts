@@ -29,30 +29,63 @@ const POLICY_PATH = join(__dirname, "..", "..", "policy.json");
 interface PolicyRule {
   id: string;
   category: string;
+  scope?: "bash" | "any";
   pattern: string;
   flags?: string;
   action: "block" | "confirm";
   message: string;
 }
 
+/**
+ * Throws on a malformed policy.json (missing/non-array "rules") instead of
+ * silently returning undefined. Without this, a malformed policy.json used
+ * to invert the intended fail-open behavior into fail-everything-closed:
+ * loadRules() returned undefined without throwing, the try/catch in
+ * FounderOsPolicy() below never fired, and the next evaluate() call threw
+ * on a non-iterable from inside the uncaught tool.execute.before hook --
+ * which this module's own design treats as a block, so every subsequent
+ * tool call got denied instead of the documented "fail open, log loudly."
+ */
 function loadRules(): PolicyRule[] {
   const raw = readFileSync(POLICY_PATH, "utf8");
-  return JSON.parse(raw).rules as PolicyRule[];
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed.rules)) {
+    throw new Error("policy.json is missing a valid 'rules' array");
+  }
+  return parsed.rules as PolicyRule[];
 }
 
-function extractCheckableStrings(toolName: string, args: Record<string, unknown>): string[] {
-  const strings: string[] = [];
+interface CheckableString {
+  value: string;
+  origin: "bash" | "file";
+}
+
+/**
+ * Each extracted string is tagged with its origin so evaluate() can filter
+ * rules by scope -- see the matching comment in bin/policy-check.js for why
+ * (editing this project's own tests/policy-cases.json fixture would
+ * otherwise trip the bash-only destructive_ops rules).
+ */
+function extractCheckableStrings(toolName: string, args: Record<string, unknown>): CheckableString[] {
+  const strings: CheckableString[] = [];
   if (toolName === "bash" && typeof args.command === "string") {
-    strings.push(args.command);
+    strings.push({ value: args.command, origin: "bash" });
   }
   if (toolName === "edit" || toolName === "write") {
     const filePath = args.filePath ?? args.file_path;
     if (typeof filePath === "string") {
-      strings.push(filePath);
-      if (typeof args.content === "string") strings.push(args.content);
+      strings.push({ value: filePath, origin: "file" });
+      if (typeof args.content === "string") strings.push({ value: args.content, origin: "file" });
       const newString = args.newString ?? args.new_string;
-      if (typeof newString === "string") strings.push(newString);
+      if (typeof newString === "string") strings.push({ value: newString, origin: "file" });
     }
+  }
+  if (toolName === "apply_patch") {
+    // apply_patch's payload carries the whole diff (Add/Update/Delete File
+    // markers) in patchText -- without this, patch-based edits bypass every
+    // policy check entirely, unlike edit/write.
+    const patchText = args.patchText;
+    if (typeof patchText === "string") strings.push({ value: patchText, origin: "file" });
   }
   return strings;
 }
@@ -77,14 +110,16 @@ export function evaluate(
   if (strings.length === 0) return { decision: "allow", reason: "" };
 
   for (const rule of rules) {
+    const scope = rule.scope ?? "any";
     let re: RegExp;
     try {
       re = new RegExp(rule.pattern, rule.flags ?? "");
     } catch {
       continue; // malformed pattern -- skip rather than crash the session
     }
-    for (const str of strings) {
-      if (re.test(str)) {
+    for (const { value, origin } of strings) {
+      if (scope !== "any" && scope !== origin) continue;
+      if (re.test(value)) {
         // OpenCode has no "ask" mode (see module comment) -- both "block"
         // and "confirm" rule actions resolve to a hard block here.
         return { decision: "block", reason: `[${rule.id}] ${rule.message}` };

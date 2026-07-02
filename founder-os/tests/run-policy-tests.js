@@ -28,11 +28,18 @@ function buildPayload(testCase) {
     if (testCase.newString !== undefined) tool_input.new_string = testCase.newString;
     return { tool_name: testCase.toolName, tool_input };
   }
+  if (testCase.toolName === 'MultiEdit') {
+    return {
+      tool_name: 'MultiEdit',
+      tool_input: { file_path: testCase.filePath, edits: testCase.edits || [] },
+    };
+  }
   throw new Error(`Unknown toolName in fixture: ${testCase.toolName}`);
 }
 
 function main() {
-  const { cases } = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  const { cases: allCases } = JSON.parse(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  const cases = allCases.filter((c) => !c.platforms || c.platforms.includes('claude-code'));
   const rules = loadPolicy();
 
   let pass = 0;

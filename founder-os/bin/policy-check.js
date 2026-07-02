@@ -5,9 +5,9 @@
  * PreToolUse policy engine for founder-os.
  *
  * Reads the Claude Code hook payload from stdin, checks the relevant string
- * (bash command, or file path/content for Edit|Write) against policy.json,
- * and responds using Claude Code's PreToolUse hook JSON output contract
- * (permissionDecision: allow|ask|deny) -- confirmed current against
+ * (bash command, or file path/content for Edit|Write|MultiEdit) against
+ * policy.json, and responds using Claude Code's PreToolUse hook JSON output
+ * contract (permissionDecision: allow|ask|deny) -- confirmed current against
  * code.claude.com/docs/en/hooks: JSON output with exit code 0 is the
  * documented mechanism, not a fallback.
  *
@@ -28,7 +28,11 @@ const POLICY_PATH = path.join(__dirname, '..', 'policy.json');
 
 function loadPolicy() {
   const raw = fs.readFileSync(POLICY_PATH, 'utf8');
-  return JSON.parse(raw).rules;
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed.rules)) {
+    throw new Error("policy.json is missing a valid 'rules' array");
+  }
+  return parsed.rules;
 }
 
 function readStdin() {
@@ -41,18 +45,35 @@ function readStdin() {
   });
 }
 
+/**
+ * Each extracted string is tagged with its origin so evaluate() can filter
+ * rules by scope. Without this, editing this project's own
+ * tests/policy-cases.json (which contains literal strings like
+ * "rm -rf node_modules" as JSON fixture data) would trip the bash-only
+ * destructive_ops rules and block the edit -- a real bug found in review.
+ */
 function extractCheckableStrings(payload) {
   const toolName = payload.tool_name || '';
   const input = payload.tool_input || {};
   const strings = [];
 
   if (toolName === 'Bash' && typeof input.command === 'string') {
-    strings.push(input.command);
+    strings.push({ value: input.command, origin: 'bash' });
   }
   if ((toolName === 'Edit' || toolName === 'Write') && typeof input.file_path === 'string') {
-    strings.push(input.file_path);
-    if (typeof input.content === 'string') strings.push(input.content);
-    if (typeof input.new_string === 'string') strings.push(input.new_string);
+    strings.push({ value: input.file_path, origin: 'file' });
+    if (typeof input.content === 'string') strings.push({ value: input.content, origin: 'file' });
+    if (typeof input.new_string === 'string') strings.push({ value: input.new_string, origin: 'file' });
+  }
+  if (toolName === 'MultiEdit' && typeof input.file_path === 'string') {
+    strings.push({ value: input.file_path, origin: 'file' });
+    if (Array.isArray(input.edits)) {
+      for (const edit of input.edits) {
+        if (edit && typeof edit.new_string === 'string') {
+          strings.push({ value: edit.new_string, origin: 'file' });
+        }
+      }
+    }
   }
   return strings;
 }
@@ -67,6 +88,7 @@ function evaluate(rules, payload) {
   if (strings.length === 0) return { decision: 'allow', reason: '' };
 
   for (const rule of rules) {
+    const scope = rule.scope || 'any';
     let re;
     try {
       re = new RegExp(rule.pattern, rule.flags || '');
@@ -74,8 +96,9 @@ function evaluate(rules, payload) {
       process.stderr.write(`policy-check: bad pattern in rule ${rule.id}: ${err.message}\n`);
       continue;
     }
-    for (const str of strings) {
-      if (re.test(str)) {
+    for (const { value, origin } of strings) {
+      if (scope !== 'any' && scope !== origin) continue;
+      if (re.test(value)) {
         const decision = rule.action === 'block' ? 'deny' : 'ask';
         return { decision, reason: `[${rule.id}] ${rule.message}` };
       }

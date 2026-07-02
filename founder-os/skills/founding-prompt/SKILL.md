@@ -46,9 +46,10 @@ let this collapse into a five-minute exercise.
    `{{PLACEHOLDER}}`. If an AGENTS.md already exists in the project (e.g.
    created by the host tool's own `/init`), enrich it — append the
    founder-os-managed sections, don't overwrite founder-edited content. Also
-   scaffold `templates/gitignore.tpl` as the project's `.gitignore` if one
-   doesn't already exist — this is what actually keeps `.env` out of git,
-   not just AGENTS.md telling the agent to remember.
+   ensure `templates/gitignore.tpl`'s entries are present in the project's
+   `.gitignore` — creating it if missing, merging its entries in if one
+   already exists — so `.env` is actually kept out of git even in a project
+   that already had a `.gitignore` before this skill ran.
 
 6. **Read back a one-paragraph summary** of what you generated in plain
    English and ask the founder to confirm before moving to

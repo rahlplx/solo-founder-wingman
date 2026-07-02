@@ -31,9 +31,11 @@ check before that happens, run fresh, every time.
    anything data-heavy, sanity-check there's no obvious unbounded fetch or
    N+1 query introduced this session.
 
-6. **Report one Red/Yellow/Green SHIP verdict**, and only then tell the
-   founder it's safe to push. Red or Yellow means fix first — don't ship
-   with a caveat attached instead of a fix.
+6. **Report one Red/Yellow/Green SHIP verdict.** If Green, pause and wait
+   for explicit founder confirmation before running `git push` — a Green
+   verdict means it's safe to ask, not license to push automatically. Red
+   or Yellow means fix first — don't ship with a caveat attached instead
+   of a fix.
 
 This skill is fully self-contained: no dedicated bin script exists or is
 needed for it. All four checks run directly via tools the agent already

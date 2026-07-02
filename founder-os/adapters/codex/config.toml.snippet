@@ -43,7 +43,7 @@ args = ["-y", "@playwright/mcp@0.0.77"]
 # only confirms local/stdio server support).
 [mcp_servers.github]
 command = "docker"
-args = ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"]
+args = ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server:v1.5.0"]
 [mcp_servers.github.env]
 GITHUB_PERSONAL_ACCESS_TOKEN = "${GITHUB_TOKEN}"
 
