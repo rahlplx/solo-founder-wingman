@@ -4,10 +4,35 @@
 # instead of just a diff. If tests fail, block the stop and hand the
 # failures back so the agent keeps working instead of declaring success.
 #
-# Scaffold note: verify the exact Stop-hook JSON contract (this uses
-# {"decision":"block","reason":...} to force continuation) against the
-# current Claude Code hooks reference before relying on this in production.
+# The {"decision":"block","reason":...} JSON contract used below is
+# confirmed current (code.claude.com/docs/en/hooks, checked directly).
 set -euo pipefail
+
+# stop_hook_active is true when Claude is already in a forced-continuation
+# turn caused by this same hook blocking last time. Without this check, a
+# persistently-failing test suite would re-block every subsequent turn
+# forever (Claude Code has a built-in override after 8 consecutive blocks,
+# but a filed upstream bug -- anthropics/claude-code#55754 -- shows that
+# safeguard doesn't reliably prevent a whole session getting burned first).
+# Always allow on the second pass rather than re-running tests again.
+PAYLOAD="$(cat)"
+STOP_HOOK_ACTIVE="$(node -e '
+  let d = "";
+  process.stdin.on("data", c => d += c);
+  process.stdin.on("end", () => {
+    try {
+      const p = JSON.parse(d);
+      process.stdout.write(p.stop_hook_active ? "true" : "false");
+    } catch (e) {
+      process.stdout.write("false");
+    }
+  });
+' <<<"$PAYLOAD")"
+
+if [[ "$STOP_HOOK_ACTIVE" == "true" ]]; then
+  echo '{"decision":"allow"}'
+  exit 0
+fi
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
