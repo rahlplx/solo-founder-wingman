@@ -1,0 +1,58 @@
+name: founder-os CI
+
+on:
+  pull_request:
+    paths:
+      - "founder-os/**"
+      - ".github/workflows/ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "founder-os/**"
+
+jobs:
+  validate-json:
+    name: Validate JSON config files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate policy.json, .mcp.json, hooks.json, plugin.json, settings.json
+        run: |
+          set -euo pipefail
+          for f in founder-os/policy.json founder-os/.mcp.json founder-os/hooks/hooks.json \
+                   founder-os/.claude-plugin/plugin.json founder-os/settings.json \
+                   .claude-plugin/marketplace.json; do
+            echo "Validating $f"
+            node -e "JSON.parse(require('fs').readFileSync('$f'))"
+          done
+
+  policy-tests:
+    name: Policy engine tests (both adapters, same fixture)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dev dependencies
+        working-directory: founder-os
+        run: npm install
+      - name: Run Claude Code adapter tests
+        working-directory: founder-os
+        run: npm run test:claude-code
+      - name: Run OpenCode adapter tests (parity check)
+        working-directory: founder-os
+        run: npm run test:opencode
+      - name: Typecheck OpenCode adapter
+        working-directory: founder-os
+        run: npm run typecheck:opencode
+
+  shellcheck:
+    name: Shellcheck bin/*.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: "./founder-os/bin"

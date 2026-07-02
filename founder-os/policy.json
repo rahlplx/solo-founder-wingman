@@ -1,5 +1,5 @@
 {
-  "_comment": "Machine-readable rule set for bin/policy-check.sh. Kept as flat JSON (not YAML) so it can be parsed with jq alone, no extra dependencies. Rule patterns adapted from roboticforce/agent-guardrails, CodyLunders/claude-code-hooks-library, kornysietsma/claude-code-permissions-hook, and AperionAI/shield (all MIT/Apache-2.0) — not written from scratch.",
+  "_comment": "Machine-readable rule set for bin/policy-check.js and adapters/opencode/plugin.ts. Kept as flat JSON so it can be parsed with jq or any language's built-in JSON support, no extra dependencies. Rule patterns adapted from roboticforce/agent-guardrails, CodyLunders/claude-code-hooks-library, kornysietsma/claude-code-permissions-hook, and AperionAI/shield (all MIT/Apache-2.0) -- not written from scratch. IMPORTANT LIMITATION (confirmed by four independent external audits, July 2026): regex matching on the final command string cannot see through shell preprocessing -- quote removal, $IFS word-splitting tricks, parameter expansion slicing, and multi-layer obfuscation can all defeat a pattern match in principle. The 'obfuscation' category below raises the bar against the most common/cheap evasion techniques (subshells hiding a keyword, IFS manipulation, eval, encoded-blob-to-shell) but this is a best-effort mitigation, not a proof of coverage. This limitation is inherent to regex-based interception as a category, not unique to this implementation -- see tests/policy-cases.json for the adversarial cases this is verified against.",
   "version": "0.1.0",
   "rules": [
     {
@@ -117,6 +117,36 @@
       "flags": "i",
       "action": "confirm",
       "message": "Switching Stripe to live mode means real charges to real cards. Confirm this is intentional."
+    },
+    {
+      "id": "obfuscation-substitution-hides-destructive",
+      "category": "obfuscation",
+      "pattern": "(\\$\\([^)]*\\b(rm|dd|mkfs|drop|truncate|delete)\\b[^)]*\\)|`[^`]*\\b(rm|dd|mkfs|drop|truncate|delete)\\b[^`]*`)",
+      "flags": "i",
+      "action": "block",
+      "message": "This hides a destructive-sounding command inside a subshell ($(...) or backticks), which is a common way to sneak a dangerous action past a simple keyword check. What does this subshell actually produce?"
+    },
+    {
+      "id": "obfuscation-ifs-splitting",
+      "category": "obfuscation",
+      "pattern": "(\\$IFS\\b|\\bIFS\\s*=)",
+      "action": "confirm",
+      "message": "This manipulates IFS (the shell's word-separator variable), which is an unusual, rarely-legitimate way to split a command that can be used to hide its real meaning from simple pattern checks. What is this command actually doing?"
+    },
+    {
+      "id": "obfuscation-eval",
+      "category": "obfuscation",
+      "pattern": "\\beval\\b\\s",
+      "action": "confirm",
+      "message": "eval executes a dynamically-built string as a command, which this policy engine can't inspect ahead of time. What command does this actually run?"
+    },
+    {
+      "id": "obfuscation-encoded-pipe-to-shell",
+      "category": "obfuscation",
+      "pattern": "(base64\\s+(-d|--decode)|xxd\\s+-r).*\\|\\s*(sh|bash|zsh|dash)\\b",
+      "flags": "i",
+      "action": "block",
+      "message": "This decodes an encoded blob and pipes it straight into a shell interpreter, which is a well-known way to run a hidden command that no simple keyword check can read in advance. What does the decoded content actually contain?"
     }
   ]
 }

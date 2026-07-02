@@ -23,14 +23,27 @@ sandbox_mode = "workspace-write"
 # vendor-hosted remote servers with OAuth -- verify current Codex support for
 # remote/URL-based MCP servers before assuming the syntax below; only the
 # local stdio pattern is confirmed as of this writing.
+#
+# Versions below are pinned to what was current on the npm/container
+# registries as of this writing (July 2026) -- update deliberately, not via
+# an unpinned @latest, per the supply-chain finding from the external audit
+# round that flagged this file.
 
 [mcp_servers.playwright]
 command = "npx"
-args = ["-y", "@playwright/mcp@latest"]
+args = ["-y", "@playwright/mcp@0.0.77"]
 
+# @modelcontextprotocol/server-github is DEPRECATED on the npm registry
+# ("Package no longer supported") -- confirmed by checking `npm view
+# @modelcontextprotocol/server-github deprecated` directly, not assumed.
+# The real official GitHub MCP server (github/github-mcp-server) ships as a
+# Docker image; requires Docker installed, which is a real dependency this
+# adds for Codex users specifically (Claude Code/OpenCode use the simpler
+# remote HTTP endpoint instead -- see .mcp.json -- since Codex's config.toml
+# only confirms local/stdio server support).
 [mcp_servers.github]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-github"]
+command = "docker"
+args = ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "ghcr.io/github/github-mcp-server"]
 [mcp_servers.github.env]
 GITHUB_PERSONAL_ACCESS_TOKEN = "${GITHUB_TOKEN}"
 

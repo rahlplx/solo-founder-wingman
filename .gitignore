@@ -1,0 +1,6 @@
+# Dev tooling for founder-os itself (tests/CI) -- not the .gitignore.tpl
+# template scaffolded into end-user founder projects, see
+# founder-os/templates/gitignore.tpl for that.
+node_modules/
+*.log
+.DS_Store

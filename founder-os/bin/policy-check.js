@@ -7,13 +7,18 @@
  * Reads the Claude Code hook payload from stdin, checks the relevant string
  * (bash command, or file path/content for Edit|Write) against policy.json,
  * and responds using Claude Code's PreToolUse hook JSON output contract
- * (permissionDecision: allow|ask|deny). Verify field names against the
- * current Claude Code hooks reference before relying on this in production —
- * hook I/O contracts evolve between versions.
+ * (permissionDecision: allow|ask|deny) -- confirmed current against
+ * code.claude.com/docs/en/hooks: JSON output with exit code 0 is the
+ * documented mechanism, not a fallback.
  *
  * Rule patterns adapted from roboticforce/agent-guardrails,
  * CodyLunders/claude-code-hooks-library, kornysietsma/claude-code-permissions-hook,
  * and AperionAI/shield — see policy.json for attribution.
+ *
+ * evaluate() and extractCheckableStrings() are exported so
+ * tests/run-policy-tests.js can test the actual matching logic without
+ * spawning a process per case, and so this logic has exactly one
+ * implementation rather than a copy inside a test file.
  */
 
 const fs = require('fs');
@@ -52,6 +57,34 @@ function extractCheckableStrings(payload) {
   return strings;
 }
 
+/**
+ * Pure evaluation: given a rule list and a hook payload, return the
+ * decision without touching stdin/stdout/process.exit. This is what both
+ * the CLI entrypoint below and the test runner call.
+ */
+function evaluate(rules, payload) {
+  const strings = extractCheckableStrings(payload);
+  if (strings.length === 0) return { decision: 'allow', reason: '' };
+
+  for (const rule of rules) {
+    let re;
+    try {
+      re = new RegExp(rule.pattern, rule.flags || '');
+    } catch (err) {
+      process.stderr.write(`policy-check: bad pattern in rule ${rule.id}: ${err.message}\n`);
+      continue;
+    }
+    for (const str of strings) {
+      if (re.test(str)) {
+        const decision = rule.action === 'block' ? 'deny' : 'ask';
+        return { decision, reason: `[${rule.id}] ${rule.message}` };
+      }
+    }
+  }
+
+  return { decision: 'allow', reason: '' };
+}
+
 function respond(decision, reason) {
   // decision: "allow" | "ask" | "deny"
   const output = {
@@ -82,29 +115,15 @@ async function main() {
   }
 
   const rules = loadPolicy();
-  const strings = extractCheckableStrings(payload);
-  if (strings.length === 0) return respond('allow');
-
-  for (const rule of rules) {
-    let re;
-    try {
-      re = new RegExp(rule.pattern, rule.flags || '');
-    } catch (err) {
-      process.stderr.write(`policy-check: bad pattern in rule ${rule.id}: ${err.message}\n`);
-      continue;
-    }
-    for (const str of strings) {
-      if (re.test(str)) {
-        const decision = rule.action === 'block' ? 'deny' : 'ask';
-        return respond(decision, `[${rule.id}] ${rule.message}`);
-      }
-    }
-  }
-
-  return respond('allow');
+  const { decision, reason } = evaluate(rules, payload);
+  return respond(decision, reason);
 }
 
-main().catch((err) => {
-  process.stderr.write(`policy-check: unexpected error: ${err.stack}\n`);
-  respond('allow');
-});
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`policy-check: unexpected error: ${err.stack}\n`);
+    respond('allow');
+  });
+}
+
+module.exports = { evaluate, extractCheckableStrings, loadPolicy };

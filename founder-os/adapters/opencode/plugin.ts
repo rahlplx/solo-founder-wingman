@@ -7,13 +7,16 @@
  * Codex adapter, which has no hook mechanism and can only rely on sandbox
  * policy (see adapters/codex/).
  *
- * Scaffold note: verify the exact shape of `input`/`output` and how
- * "modify vs. throw" is expressed against the current OpenCode plugin docs
- * before relying on this in production -- plugin APIs evolve. OpenCode's
- * tool.execute.before does not have a documented distinct "ask for
- * confirmation" mode the way Claude Code's PreToolUse hook does, so
- * "confirm"-level rules are treated the same as "block" here -- a stricter
- * fallback, not a silent downgrade.
+ * Confirmed (July 2026, via OpenCode plugin docs and issue tracker):
+ * tool.execute.before has no native "ask for confirmation" mode, only
+ * allow-or-throw. "confirm"-level rules are therefore treated the same as
+ * "block" here -- that is the platform's actual ceiling, not a shortcut we
+ * chose to take.
+ *
+ * evaluate() is exported so tests/run-opencode-policy-tests.ts can run the
+ * same fixture (tests/policy-cases.json) used against the Claude Code
+ * adapter through this actual matching logic, to catch drift between the
+ * two independent implementations rather than assuming they stay in sync.
  */
 
 import { readFileSync } from "node:fs";
@@ -54,6 +57,46 @@ function extractCheckableStrings(toolName: string, args: Record<string, unknown>
   return strings;
 }
 
+interface EvaluationResult {
+  decision: "allow" | "block";
+  reason: string;
+}
+
+/**
+ * Pure evaluation: given a rule list, a tool name, and its args, return the
+ * decision without throwing. This is what both the exported hook below and
+ * the test runner call, so there is exactly one implementation of the
+ * matching logic, not a copy inside a test file.
+ */
+export function evaluate(
+  rules: PolicyRule[],
+  toolName: string,
+  args: Record<string, unknown>
+): EvaluationResult {
+  const strings = extractCheckableStrings(toolName, args);
+  if (strings.length === 0) return { decision: "allow", reason: "" };
+
+  for (const rule of rules) {
+    let re: RegExp;
+    try {
+      re = new RegExp(rule.pattern, rule.flags ?? "");
+    } catch {
+      continue; // malformed pattern -- skip rather than crash the session
+    }
+    for (const str of strings) {
+      if (re.test(str)) {
+        // OpenCode has no "ask" mode (see module comment) -- both "block"
+        // and "confirm" rule actions resolve to a hard block here.
+        return { decision: "block", reason: `[${rule.id}] ${rule.message}` };
+      }
+    }
+  }
+
+  return { decision: "allow", reason: "" };
+}
+
+export { loadRules, extractCheckableStrings };
+
 export const FounderOsPolicy = async () => {
   let rules: PolicyRule[] = [];
   try {
@@ -69,21 +112,9 @@ export const FounderOsPolicy = async () => {
       input: { tool: string; sessionID: string; callID: string },
       output: { args: Record<string, unknown> }
     ) => {
-      const strings = extractCheckableStrings(input.tool, output.args);
-      if (strings.length === 0) return;
-
-      for (const rule of rules) {
-        let re: RegExp;
-        try {
-          re = new RegExp(rule.pattern, rule.flags ?? "");
-        } catch {
-          continue; // malformed pattern -- skip rather than crash the session
-        }
-        for (const str of strings) {
-          if (re.test(str)) {
-            throw new Error(`[founder-os:${rule.id}] ${rule.message}`);
-          }
-        }
+      const { decision, reason } = evaluate(rules, input.tool, output.args);
+      if (decision === "block") {
+        throw new Error(reason);
       }
     },
   };
