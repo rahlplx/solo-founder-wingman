@@ -1,6 +1,6 @@
 ---
 name: verify-path
-description: Gate any "this is done" claim behind actual evidence using the PATH walkthrough method (Primary flow, Alternate paths, Transitions, Happy+Hostile testing), since the founder cannot read the code to verify it themselves. Run this before presenting any feature as complete, and before /ship.
+description: Gate any "this is done" claim behind actual evidence using the PATH walkthrough method (Primary flow, Alternate paths, Transitions, Happy+Hostile testing), since the founder cannot read the code to verify it themselves. Run this before presenting any feature as complete, and before /ship-checklist.
 ---
 
 # Verify (PATH walkthrough)
