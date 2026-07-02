@@ -1,0 +1,122 @@
+{
+  "_comment": "Machine-readable rule set for bin/policy-check.sh. Kept as flat JSON (not YAML) so it can be parsed with jq alone, no extra dependencies. Rule patterns adapted from roboticforce/agent-guardrails, CodyLunders/claude-code-hooks-library, kornysietsma/claude-code-permissions-hook, and AperionAI/shield (all MIT/Apache-2.0) — not written from scratch.",
+  "version": "0.1.0",
+  "rules": [
+    {
+      "id": "destructive-rm-rf",
+      "category": "destructive_ops",
+      "pattern": "rm\\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*|--recursive\\s+--force|--force\\s+--recursive)",
+      "action": "block",
+      "message": "This deletes files/folders permanently with no undo. What exactly is being deleted and why?"
+    },
+    {
+      "id": "destructive-git-force-push",
+      "category": "destructive_ops",
+      "pattern": "git\\s+push\\s+.*(--force(?!-with-lease)|(?<!-)-f\\b)",
+      "action": "block",
+      "message": "Force-push can overwrite remote history other people (or your future self) depend on. Use --force-with-lease if you're sure, or explain why this is safe."
+    },
+    {
+      "id": "destructive-git-reset-hard",
+      "category": "destructive_ops",
+      "pattern": "git\\s+reset\\s+--hard",
+      "action": "confirm",
+      "message": "This discards uncommitted work with no undo. Confirm nothing important is uncommitted first."
+    },
+    {
+      "id": "destructive-git-branch-delete",
+      "category": "destructive_ops",
+      "pattern": "git\\s+branch\\s+-D\\b",
+      "action": "confirm",
+      "message": "Force-deleting a branch discards its commits if unmerged."
+    },
+    {
+      "id": "destructive-sql-drop",
+      "category": "destructive_ops",
+      "pattern": "\\bDROP\\s+(TABLE|DATABASE|SCHEMA)\\b",
+      "flags": "i",
+      "action": "block",
+      "message": "This permanently deletes a database table/schema and its data. This should almost never run outside a migration you wrote deliberately."
+    },
+    {
+      "id": "destructive-sql-unscoped-write",
+      "category": "destructive_ops",
+      "pattern": "\\b(DELETE\\s+FROM|UPDATE)\\s+\\w+\\s*(;|$)(?!.*\\bWHERE\\b)",
+      "flags": "i",
+      "action": "confirm",
+      "message": "This UPDATE/DELETE has no WHERE clause — it will affect every row in the table. Is that intended?"
+    },
+    {
+      "id": "destructive-terraform-destroy",
+      "category": "destructive_ops",
+      "pattern": "terraform\\s+destroy",
+      "action": "block",
+      "message": "This tears down real infrastructure."
+    },
+    {
+      "id": "destructive-k8s-delete",
+      "category": "destructive_ops",
+      "pattern": "kubectl\\s+delete\\s+(namespace|-f\\s)",
+      "action": "confirm",
+      "message": "This deletes a namespace or applies a broad delete manifest."
+    },
+    {
+      "id": "destructive-chmod-777",
+      "category": "destructive_ops",
+      "pattern": "chmod\\s+(-R\\s+)?777",
+      "action": "confirm",
+      "message": "777 makes files world-writable — usually not what you want, even to unblock something quickly."
+    },
+    {
+      "id": "secrets-read-env-to-output",
+      "category": "secrets",
+      "pattern": "(cat|less|more|head|tail)\\s+.*\\.env\\b",
+      "action": "confirm",
+      "message": "This would print secret values into the chat log. Consider checking a specific key with grep instead of dumping the whole file."
+    },
+    {
+      "id": "secrets-git-add-env",
+      "category": "secrets",
+      "pattern": "git\\s+add\\s+.*\\.env(?!\\.example)",
+      "action": "block",
+      "message": ".env files hold secrets and should never be committed. Add it to .gitignore instead."
+    },
+    {
+      "id": "secrets-exfil-pattern",
+      "category": "secrets",
+      "pattern": "(cat|env|printenv).*(\\||;).*(curl|wget|nc)\\s",
+      "action": "block",
+      "message": "This reads environment/secret values and sends them to a network destination in the same command — blocked pending explicit confirmation of what's being sent where."
+    },
+    {
+      "id": "prod-boundary-destructive-with-prod-flag",
+      "category": "prod_boundary",
+      "pattern": "(prod|production).*(drop|delete|truncate|reset|migrate\\s+--force)",
+      "flags": "i",
+      "action": "block",
+      "message": "This targets something tagged production and is a destructive/irreversible action. Confirm explicitly before this runs against real user data."
+    },
+    {
+      "id": "prod-boundary-stripe-live-key",
+      "category": "prod_boundary",
+      "pattern": "sk_live_[A-Za-z0-9]+",
+      "action": "confirm",
+      "message": "A live Stripe secret key is present in this command. Live-mode Stripe actions move real money — confirm this is intentional, not a copy-paste from test mode."
+    },
+    {
+      "id": "cost-cloud-resource-create",
+      "category": "cost_sensitive",
+      "pattern": "(aws\\s+\\w+\\s+create-|gcloud\\s+\\w+\\s+create|az\\s+\\w+\\s+create|terraform\\s+apply)",
+      "action": "confirm",
+      "message": "This provisions billed cloud infrastructure. Confirm you understand the ongoing cost before this runs."
+    },
+    {
+      "id": "cost-stripe-live-mode-toggle",
+      "category": "cost_sensitive",
+      "pattern": "(stripe.*live.?mode|STRIPE_MODE\\s*=\\s*[\"']?live)",
+      "flags": "i",
+      "action": "confirm",
+      "message": "Switching Stripe to live mode means real charges to real cards. Confirm this is intentional."
+    }
+  ]
+}

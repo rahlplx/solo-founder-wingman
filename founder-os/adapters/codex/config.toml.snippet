@@ -1,0 +1,39 @@
+# founder-os recommended Codex CLI configuration.
+#
+# Codex has no code-level hook mechanism (unlike Claude Code's hooks.json or
+# OpenCode's tool.execute.before) -- this is policy/sandbox-level protection
+# only, per OpenAI's own documented guidance. It's a real, human-in-the-loop
+# gate (nothing runs outside the sandbox without your approval), just a
+# weaker guarantee than code-level interception. This gap is documented for
+# the founder in the generated AGENTS.md "Known Limitations by Platform"
+# section -- it is not hidden.
+#
+# Merge this into ~/.codex/config.toml or a project-scoped .codex/config.toml.
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+# Do NOT set approval_policy = "never" combined with
+# sandbox_mode = "danger-full-access" -- OpenAI's own docs explicitly warn
+# against this combination.
+
+# --- MCP servers -----------------------------------------------------------
+# Local/stdio servers are well-documented for Codex's config.toml. Several of
+# our integrations (Supabase, Stripe, Vercel, Sentry) now default to
+# vendor-hosted remote servers with OAuth -- verify current Codex support for
+# remote/URL-based MCP servers before assuming the syntax below; only the
+# local stdio pattern is confirmed as of this writing.
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@latest"]
+
+[mcp_servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+[mcp_servers.github.env]
+GITHUB_PERSONAL_ACCESS_TOKEN = "${GITHUB_TOKEN}"
+
+# Supabase, Stripe, Vercel, Sentry, PostHog: see references/mcp-servers.md
+# for their current (mostly remote+OAuth) connection details. Add them here
+# once remote MCP server support in Codex's config.toml is confirmed.

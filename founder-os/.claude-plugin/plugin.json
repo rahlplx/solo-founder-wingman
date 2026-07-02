@@ -1,0 +1,20 @@
+{
+  "name": "founder-os",
+  "version": "0.1.0",
+  "description": "Lifecycle orchestrator, safety rails, and a founder-friendly skill library for non-technical solo founders building products with AI coding agents.",
+  "author": {
+    "name": "Founder OS",
+    "email": "teambiggapon@gmail.com"
+  },
+  "homepage": "https://github.com/rahlplx/lab-launchpad-ai-sdk",
+  "repository": "https://github.com/rahlplx/lab-launchpad-ai-sdk",
+  "license": "MIT",
+  "keywords": [
+    "non-technical-founder",
+    "vibe-coding",
+    "agent-agnostic",
+    "safety",
+    "prd",
+    "lifecycle"
+  ]
+}
