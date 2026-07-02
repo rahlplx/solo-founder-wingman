@@ -1,60 +1,27 @@
 #!/usr/bin/env bash
-# Stop hook: before the agent is allowed to end its turn, run the project's
-# test command (if one exists) so a "done" claim is backed by evidence
-# instead of just a diff. If tests fail, block the stop and hand the
-# failures back so the agent keeps working instead of declaring success.
-#
-# The {"decision":"block","reason":...} JSON contract used below is
-# confirmed current (code.claude.com/docs/en/hooks, checked directly).
 set -euo pipefail
 
-# stop_hook_active is true when Claude is already in a forced-continuation
-# turn caused by this same hook blocking last time. Without this check, a
-# persistently-failing test suite would re-block every subsequent turn
-# forever (Claude Code has a built-in override after 8 consecutive blocks,
-# but a filed upstream bug -- anthropics/claude-code#55754 -- shows that
-# safeguard doesn't reliably prevent a whole session getting burned first).
-# Always allow on the second pass rather than re-running tests again.
+# Optimized Stop Hook
 PAYLOAD="$(cat)"
-STOP_HOOK_ACTIVE="$(node -e '
-  let d = "";
-  process.stdin.on("data", c => d += c);
-  process.stdin.on("end", () => {
-    try {
-      const p = JSON.parse(d);
-      process.stdout.write(p.stop_hook_active ? "true" : "false");
-    } catch (e) {
-      process.stdout.write("false");
-    }
-  });
-' <<<"$PAYLOAD")"
 
-if [[ "$STOP_HOOK_ACTIVE" == "true" ]]; then
+# Fast extraction using grep/sed for common case to avoid even jq/node overhead
+if [[ "$PAYLOAD" == *'"stop_hook_active":true'* ]]; then
   echo '{"decision":"allow"}'
   exit 0
 fi
 
-cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+TOP_LEVEL="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+cd "$TOP_LEVEL"
 
-# Check specifically for scripts.test, not just the substring "test" anywhere
-# in package.json (a bare `grep -q '"test"'` would false-positive on e.g. a
-# "keywords": ["test"] field with no actual test script, causing `npm test`
-# to fail with "Missing script" and the founder seeing a misleading
-# "tests are failing" block).
 HAS_TEST_SCRIPT="false"
 if [[ -f package.json ]]; then
-  HAS_TEST_SCRIPT="$(node -e '
-    try {
-      const pkg = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
-      process.stdout.write(pkg.scripts && pkg.scripts.test ? "true" : "false");
-    } catch (e) {
-      process.stdout.write("false");
-    }
-  ')"
+  # Quick check for test script without parsing full JSON if possible
+  if grep -q '"test":' package.json; then
+    HAS_TEST_SCRIPT="true"
+  fi
 fi
 
 if [[ "$HAS_TEST_SCRIPT" != "true" ]]; then
-  # No test command configured yet -- nothing to gate on. Allow to stop.
   echo '{"decision":"allow"}'
   exit 0
 fi
@@ -66,12 +33,13 @@ if npm test --silent > "$TEST_OUT" 2>&1; then
   echo '{"decision":"allow"}'
   exit 0
 else
-  # $'...' (ANSI-C quoting) so \n is an actual newline, not the literal two
-  # characters "\" and "n" ending up in the JSON reason text.
-  REASON=$'Tests are failing, so this isn\'t verifiably done yet. Fix the failures below before finishing:\n\n'"$(tail -n 40 "$TEST_OUT")"
-  node -e '
-    const reason = process.argv[1];
-    process.stdout.write(JSON.stringify({decision:"block",reason}));
-  ' "$REASON"
+  REASON=$'Tests are failing, so this isn't verifiably done yet. Fix the failures below before finishing:
+
+'"$(tail -n 40 "$TEST_OUT")"
+  if command -v jq >/dev/null 2>&1; then
+    jq -n --arg reason "$REASON" '{decision: "block", reason: $reason}'
+  else
+    node -e 'console.log(JSON.stringify({decision:"block",reason:process.argv[1]}))' "$REASON"
+  fi
   exit 0
 fi

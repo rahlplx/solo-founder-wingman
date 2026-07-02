@@ -1,22 +1,6 @@
 /**
  * founder-os OpenCode adapter.
- *
- * Implements the same policy.json rule set as the Claude Code hook
- * (bin/policy-check.js), via OpenCode's `tool.execute.before` plugin hook.
- * This is real code-level interception, same as Claude Code -- unlike the
- * Codex adapter, which has no hook mechanism and can only rely on sandbox
- * policy (see adapters/codex/).
- *
- * Confirmed (July 2026, via OpenCode plugin docs and issue tracker):
- * tool.execute.before has no native "ask for confirmation" mode, only
- * allow-or-throw. "confirm"-level rules are therefore treated the same as
- * "block" here -- that is the platform's actual ceiling, not a shortcut we
- * chose to take.
- *
- * evaluate() is exported so tests/run-opencode-policy-tests.ts can run the
- * same fixture (tests/policy-cases.json) used against the Claude Code
- * adapter through this actual matching logic, to catch drift between the
- * two independent implementations rather than assuming they stay in sync.
+ * Optimized with keyword fast-path and pre-compiled regexes.
  */
 
 import { readFileSync } from "node:fs";
@@ -34,18 +18,14 @@ interface PolicyRule {
   flags?: string;
   action: "block" | "confirm";
   message: string;
+  keywords?: string[];
 }
 
-/**
- * Throws on a malformed policy.json (missing/non-array "rules") instead of
- * silently returning undefined. Without this, a malformed policy.json used
- * to invert the intended fail-open behavior into fail-everything-closed:
- * loadRules() returned undefined without throwing, the try/catch in
- * FounderOsPolicy() below never fired, and the next evaluate() call threw
- * on a non-iterable from inside the uncaught tool.execute.before hook --
- * which this module's own design treats as a block, so every subsequent
- * tool call got denied instead of the documented "fail open, log loudly."
- */
+interface CompiledRule extends PolicyRule {
+  re: RegExp;
+  lowerKeywords: string[];
+}
+
 function loadRules(): PolicyRule[] {
   const raw = readFileSync(POLICY_PATH, "utf8");
   const parsed = JSON.parse(raw);
@@ -55,17 +35,25 @@ function loadRules(): PolicyRule[] {
   return parsed.rules as PolicyRule[];
 }
 
+function compileRules(rules: PolicyRule[]): CompiledRule[] {
+  return rules.map(rule => {
+    try {
+      return {
+        ...rule,
+        re: new RegExp(rule.pattern, rule.flags ?? ""),
+        lowerKeywords: (rule.keywords ?? []).map(k => k.toLowerCase())
+      };
+    } catch {
+      return null;
+    }
+  }).filter((r): r is CompiledRule => r !== null);
+}
+
 interface CheckableString {
   value: string;
   origin: "bash" | "file";
 }
 
-/**
- * Each extracted string is tagged with its origin so evaluate() can filter
- * rules by scope -- see the matching comment in bin/policy-check.js for why
- * (editing this project's own tests/policy-cases.json fixture would
- * otherwise trip the bash-only destructive_ops rules).
- */
 function extractCheckableStrings(toolName: string, args: Record<string, unknown>): CheckableString[] {
   const strings: CheckableString[] = [];
   if (toolName === "bash" && typeof args.command === "string") {
@@ -81,9 +69,6 @@ function extractCheckableStrings(toolName: string, args: Record<string, unknown>
     }
   }
   if (toolName === "apply_patch") {
-    // apply_patch's payload carries the whole diff (Add/Update/Delete File
-    // markers) in patchText -- without this, patch-based edits bypass every
-    // policy check entirely, unlike edit/write.
     const patchText = args.patchText;
     if (typeof patchText === "string") strings.push({ value: patchText, origin: "file" });
   }
@@ -95,33 +80,32 @@ interface EvaluationResult {
   reason: string;
 }
 
-/**
- * Pure evaluation: given a rule list, a tool name, and its args, return the
- * decision without throwing. This is what both the exported hook below and
- * the test runner call, so there is exactly one implementation of the
- * matching logic, not a copy inside a test file.
- */
 export function evaluate(
-  rules: PolicyRule[],
+  rules: (PolicyRule | CompiledRule)[],
   toolName: string,
   args: Record<string, unknown>
 ): EvaluationResult {
   const strings = extractCheckableStrings(toolName, args);
   if (strings.length === 0) return { decision: "allow", reason: "" };
 
-  for (const rule of rules) {
+  // Ensure rules are compiled for evaluation
+  const compiledRules: CompiledRule[] = (rules[0] && "re" in rules[0])
+    ? rules as CompiledRule[]
+    : compileRules(rules as PolicyRule[]);
+
+  for (const rule of compiledRules) {
     const scope = rule.scope ?? "any";
-    let re: RegExp;
-    try {
-      re = new RegExp(rule.pattern, rule.flags ?? "");
-    } catch {
-      continue; // malformed pattern -- skip rather than crash the session
-    }
+
     for (const { value, origin } of strings) {
       if (scope !== "any" && scope !== origin) continue;
-      if (re.test(value)) {
-        // OpenCode has no "ask" mode (see module comment) -- both "block"
-        // and "confirm" rule actions resolve to a hard block here.
+
+      // HYBRID FAST-PATH: Keyword check
+      if (rule.lowerKeywords.length > 0) {
+        const lowerValue = value.toLowerCase();
+        if (!rule.lowerKeywords.some(k => lowerValue.includes(k))) continue;
+      }
+
+      if (rule.re.test(value)) {
         return { decision: "block", reason: `[${rule.id}] ${rule.message}` };
       }
     }
@@ -133,13 +117,11 @@ export function evaluate(
 export { loadRules, extractCheckableStrings };
 
 export const FounderOsPolicy = async () => {
-  let rules: PolicyRule[] = [];
+  let compiledRules: CompiledRule[] = [];
   try {
-    rules = loadRules();
+    compiledRules = compileRules(loadRules());
   } catch (err) {
-    // Fail open rather than crashing plugin init / disabling all plugins on
-    // a missing or malformed policy.json -- but say so loudly.
-    console.error("[founder-os] Failed to load policy rules:", err);
+    console.error("[founder-os] Failed to load/compile policy rules:", err);
   }
 
   return {
@@ -147,7 +129,7 @@ export const FounderOsPolicy = async () => {
       input: { tool: string; sessionID: string; callID: string },
       output: { args: Record<string, unknown> }
     ) => {
-      const { decision, reason } = evaluate(rules, input.tool, output.args);
+      const { decision, reason } = evaluate(compiledRules, input.tool, output.args);
       if (decision === "block") {
         throw new Error(reason);
       }
