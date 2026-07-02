@@ -5,7 +5,7 @@
     {
       "id": "destructive-rm-rf",
       "category": "destructive_ops",
-      "pattern": "rm\\s+(-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*|--recursive\\s+--force|--force\\s+--recursive)",
+      "pattern": "rm\\s+.*(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR]|--recursive\\b.*--force\\b|--force\\b.*--recursive\\b|(?<!\\S)-[rR](?!\\S).*(?<!\\S)-f(?!\\S)|(?<!\\S)-f(?!\\S).*(?<!\\S)-[rR](?!\\S))",
       "action": "block",
       "message": "This deletes files/folders permanently with no undo. What exactly is being deleted and why?"
     },
@@ -41,7 +41,7 @@
     {
       "id": "destructive-sql-unscoped-write",
       "category": "destructive_ops",
-      "pattern": "\\b(DELETE\\s+FROM|UPDATE)\\s+\\w+\\s*(;|$)(?!.*\\bWHERE\\b)",
+      "pattern": "\\b(DELETE\\s+FROM\\s+\\w+|UPDATE\\s+\\w+\\s+SET)\\b(?!.*\\bWHERE\\b)",
       "flags": "i",
       "action": "confirm",
       "message": "This UPDATE/DELETE has no WHERE clause — it will affect every row in the table. Is that intended?"

@@ -17,11 +17,14 @@ if [[ ! -f package.json ]] || ! grep -q '"test"' package.json 2>/dev/null; then
   exit 0
 fi
 
-if npm test --silent > /tmp/founder-os-test-output.txt 2>&1; then
+TEST_OUT="$(mktemp)"
+trap 'rm -f "$TEST_OUT"' EXIT
+
+if npm test --silent > "$TEST_OUT" 2>&1; then
   echo '{"decision":"allow"}'
   exit 0
 else
-  REASON="Tests are failing, so this isn't verifiably done yet. Fix the failures below before finishing:\n\n$(tail -n 40 /tmp/founder-os-test-output.txt)"
+  REASON="Tests are failing, so this isn't verifiably done yet. Fix the failures below before finishing:\n\n$(tail -n 40 "$TEST_OUT")"
   node -e '
     const reason = process.argv[1];
     process.stdout.write(JSON.stringify({decision:"block",reason}));

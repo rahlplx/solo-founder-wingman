@@ -71,6 +71,9 @@ async function main() {
   let payload;
   try {
     payload = JSON.parse(raw);
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('payload is not a non-null object');
+    }
   } catch (err) {
     // Fail open on a malformed payload rather than blocking legitimate work
     // because of a hook bug -- but say so loudly, in stderr, for debugging.

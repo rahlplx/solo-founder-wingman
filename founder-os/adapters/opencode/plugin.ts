@@ -42,16 +42,27 @@ function extractCheckableStrings(toolName: string, args: Record<string, unknown>
   if (toolName === "bash" && typeof args.command === "string") {
     strings.push(args.command);
   }
-  if ((toolName === "edit" || toolName === "write") && typeof args.filePath === "string") {
-    strings.push(args.filePath);
-    if (typeof args.content === "string") strings.push(args.content);
-    if (typeof args.newString === "string") strings.push(args.newString);
+  if (toolName === "edit" || toolName === "write") {
+    const filePath = args.filePath ?? args.file_path;
+    if (typeof filePath === "string") {
+      strings.push(filePath);
+      if (typeof args.content === "string") strings.push(args.content);
+      const newString = args.newString ?? args.new_string;
+      if (typeof newString === "string") strings.push(newString);
+    }
   }
   return strings;
 }
 
 export const FounderOsPolicy = async () => {
-  const rules = loadRules();
+  let rules: PolicyRule[] = [];
+  try {
+    rules = loadRules();
+  } catch (err) {
+    // Fail open rather than crashing plugin init / disabling all plugins on
+    // a missing or malformed policy.json -- but say so loudly.
+    console.error("[founder-os] Failed to load policy rules:", err);
+  }
 
   return {
     "tool.execute.before": async (
