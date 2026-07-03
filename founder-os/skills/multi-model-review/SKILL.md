@@ -36,6 +36,11 @@ and aren't interchangeable — running one doesn't excuse skipping another.
 
 5. **Consolidate into one Red/Yellow/Green verdict per layer**, with a
    specific fix for anything not Green — never "this could be improved."
+   When Layer 2/3 run via the `code-critic`/`security-reviewer` subagents,
+   each report leads with a standardized `VERDICT`/`FINDINGS`/
+   `RECOMMENDATION`/`CONFIDENCE` block — read that first for the
+   consolidated verdict rather than re-deriving it from the detailed
+   per-category grid below it.
 
 6. **State which layers actually ran** before declaring anything
    "reviewed." A clean Layer 2 pass isn't evidence of security. A clean

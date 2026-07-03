@@ -96,6 +96,28 @@ function main() {
         result.stdout.includes('"## What NOT to do" section'),
         result.stdout
       );
+      check(
+        'lint-harness: flags an agent missing the standardized output contract fields',
+        ['VERDICT:', 'FINDINGS:', 'RECOMMENDATION:', 'CONFIDENCE:'].every((f) => result.stdout.includes(f)),
+        result.stdout
+      );
+    }
+  );
+
+  withTempFile(
+    'agents/__tmp-partial-contract-agent.md',
+    '---\nname: __tmp-partial-contract-agent\ndescription: a fixture\ntools: Read\n---\n\n## Report format\nVERDICT: PASS\nFINDINGS: none\n\n## What NOT to do\nn/a\n',
+    () => {
+      const result = runLintHarness();
+      check(
+        'lint-harness: flags an agent with only some output-contract fields present (missing RECOMMENDATION/CONFIDENCE, but not VERDICT/FINDINGS which are present)',
+        result.status === 1 &&
+          result.stdout.includes('standardized output contract includes RECOMMENDATION:') &&
+          result.stdout.includes('standardized output contract includes CONFIDENCE:') &&
+          !result.stdout.includes('standardized output contract includes VERDICT:') &&
+          !result.stdout.includes('standardized output contract includes FINDINGS:'),
+        result.stdout
+      );
     }
   );
 

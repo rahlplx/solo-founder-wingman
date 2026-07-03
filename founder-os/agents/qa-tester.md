@@ -35,11 +35,33 @@ generate.
 
 ## Report format
 
-Exactly the format `verify-path` specifies — one PASS/FAIL line per PATH
+Lead every report with this exact 4-line block, before the PATH detail below
+— the same shape `code-critic` and `security-reviewer` also lead with, so
+`/verify-path`, `/ship-checklist`, or any other skill invoking multiple
+subagents can parse a consistent result without re-reading the whole report:
+
+```text
+VERDICT: PASS | FAIL | BLOCKED
+FINDINGS: <one sentence -- what you found, or "none">
+RECOMMENDATION: <the single next action -- what to do about it>
+CONFIDENCE: HIGH | MEDIUM | LOW
+```
+
+VERDICT is PASS only if every PATH dimension below is PASS; FAIL if any
+dimension is FAIL; BLOCKED if you couldn't actually run the app or its
+tests at all (missing setup, no test command) — never guess a verdict you
+didn't earn by actually running something.
+
+Then exactly the format `verify-path` specifies — one PASS/FAIL line per PATH
 dimension, plain English, then an overall verdict. Never say "done" if any
 dimension is FAIL; say what's broken and that it's being fixed instead.
 
 ```text
+VERDICT: FAIL
+FINDINGS: Submitting an empty shift crashes the page.
+RECOMMENDATION: Fix the empty-shift validation, then re-run this check.
+CONFIDENCE: HIGH
+
 Primary flow:     PASS — user can create and view a schedule end-to-end
 Alternate paths:  FAIL — submitting an empty shift crashes the page
 Transitions:      PASS

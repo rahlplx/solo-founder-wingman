@@ -40,10 +40,27 @@ that's a gap in the policy engine itself, not just this codebase.
 
 ## Report format
 
-One line per LOCK item: 🔴/🟡/🟢, one sentence on what you checked, and — for
-anything not green — the specific fix, not a vague suggestion. End with a
-one-sentence overall verdict the founder can act on immediately ("safe to
-ship" / "fix the auth issue below before shipping").
+Lead every report with this exact 4-line block, before the LOCK detail below
+— the same shape `qa-tester` and `code-critic` also lead with, so
+`/security-audit`, `/multi-model-review`, or any other skill invoking
+multiple subagents can parse a consistent result without re-reading the
+whole report:
+
+```text
+VERDICT: PASS | CAUTION | FAIL | BLOCKED
+FINDINGS: <one sentence -- what you found, or "none">
+RECOMMENDATION: <the single next action -- what to do about it>
+CONFIDENCE: HIGH | MEDIUM | LOW
+```
+
+VERDICT is PASS if every LOCK item below is 🟢; CAUTION if none are 🔴 but
+at least one is 🟡; FAIL if any LOCK item is 🔴; BLOCKED if you couldn't
+actually access the relevant code or config to check it.
+
+Then one line per LOCK item: 🔴/🟡/🟢, one sentence on what you checked, and
+— for anything not green — the specific fix, not a vague suggestion. End
+with a one-sentence overall verdict the founder can act on immediately
+("safe to ship" / "fix the auth issue below before shipping").
 
 ## What NOT to do
 

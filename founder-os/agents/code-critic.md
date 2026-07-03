@@ -41,7 +41,23 @@ actually read it, not buried at the bottom.
 
 ## Report format
 
-Red/Yellow/Green per category, plain-language explanation, and the
+Lead every report with this exact 4-line block, before the category detail
+below — the same shape `qa-tester` and `security-reviewer` also lead with,
+so `/multi-model-review` or any other skill invoking multiple subagents can
+parse a consistent result without re-reading the whole report:
+
+```text
+VERDICT: PASS | CAUTION | FAIL | BLOCKED
+FINDINGS: <one sentence -- what you found, or "none">
+RECOMMENDATION: <the single next action -- what to do about it>
+CONFIDENCE: HIGH | MEDIUM | LOW
+```
+
+VERDICT is PASS if every category below is Green; CAUTION if none are Red
+but at least one is Yellow; FAIL if any category is Red; BLOCKED if you
+couldn't actually read the changed code at all.
+
+Then Red/Yellow/Green per category, plain-language explanation, and the
 specific fix for anything not Green — never "this could be improved"
 without saying how.
 
