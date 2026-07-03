@@ -34,6 +34,12 @@ interface PolicyRule {
   flags?: string;
   action: "block" | "confirm";
   message: string;
+  keywords?: string[];
+}
+
+interface CompiledRule extends PolicyRule {
+  re: RegExp;
+  lowerKeywords: string[] | null;
 }
 
 /**
@@ -96,6 +102,45 @@ interface EvaluationResult {
 }
 
 /**
+ * Compiling each rule's RegExp is cached per rules array (keyed by object
+ * identity via WeakMap) rather than redone on every evaluate() call. This
+ * is a real win here specifically: FounderOsPolicy() below loads rules
+ * once at plugin init, and the returned tool.execute.before handler then
+ * calls evaluate() on every single tool call for the life of the session --
+ * unlike the Claude Code adapter, which is a fresh process per hook
+ * invocation. tests/run-opencode-policy-tests.ts also benefits, since it
+ * calls evaluate() once per fixture case (~60 times) in one process.
+ *
+ * keywords (from policy.json, optional per rule) is a cheap pre-filter: if
+ * present, the full regex only runs when at least one keyword is a
+ * case-insensitive substring of the string being checked. Every keyword in
+ * policy.json is required to be a literal substring guaranteed present in
+ * any real match of that rule's pattern (documented in policy.json's
+ * _comment) -- so this can only skip unnecessary regex work, never a real
+ * match. A rule with no keywords always runs its full regex, unfiltered.
+ */
+const compiledRulesCache = new WeakMap<PolicyRule[], CompiledRule[]>();
+
+function compileRules(rules: PolicyRule[]): CompiledRule[] {
+  const cached = compiledRulesCache.get(rules);
+  if (cached) return cached;
+
+  const compiled: CompiledRule[] = [];
+  for (const rule of rules) {
+    let re: RegExp;
+    try {
+      re = new RegExp(rule.pattern, rule.flags ?? "");
+    } catch {
+      continue; // malformed pattern -- skip rather than crash the session
+    }
+    const lowerKeywords = rule.keywords ? rule.keywords.map((k) => k.toLowerCase()) : null;
+    compiled.push({ ...rule, re, lowerKeywords });
+  }
+  compiledRulesCache.set(rules, compiled);
+  return compiled;
+}
+
+/**
  * Pure evaluation: given a rule list, a tool name, and its args, return the
  * decision without throwing. This is what both the exported hook below and
  * the test runner call, so there is exactly one implementation of the
@@ -109,17 +154,17 @@ export function evaluate(
   const strings = extractCheckableStrings(toolName, args);
   if (strings.length === 0) return { decision: "allow", reason: "" };
 
-  for (const rule of rules) {
+  const compiledRules = compileRules(rules);
+
+  for (const rule of compiledRules) {
     const scope = rule.scope ?? "any";
-    let re: RegExp;
-    try {
-      re = new RegExp(rule.pattern, rule.flags ?? "");
-    } catch {
-      continue; // malformed pattern -- skip rather than crash the session
-    }
     for (const { value, origin } of strings) {
       if (scope !== "any" && scope !== origin) continue;
-      if (re.test(value)) {
+      if (rule.lowerKeywords) {
+        const lowerValue = value.toLowerCase();
+        if (!rule.lowerKeywords.some((k) => lowerValue.includes(k))) continue;
+      }
+      if (rule.re.test(value)) {
         // OpenCode has no "ask" mode (see module comment) -- both "block"
         // and "confirm" rule actions resolve to a hard block here.
         return { decision: "block", reason: `[${rule.id}] ${rule.message}` };
