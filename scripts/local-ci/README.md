@@ -31,10 +31,14 @@ full log followed by a summary table.
 
 ## How it works
 
-1. The target ref is resolved to a commit and checked out into a throwaway
-   `git worktree` -- never the caller's working directory, so a dirty tree
-   or wrong branch can't leak into the result.
-2. That worktree becomes a Docker build context (`Dockerfile` in this
+1. The target ref is resolved to a commit and checked out into a throwaway,
+   self-contained local clone (`git clone --local`, not `git worktree add`
+   -- a linked worktree's `.git` is just a pointer back to this host's
+   `.git/worktrees/...` by absolute path, which breaks any `git` command
+   run inside the container once copied there) -- never the caller's
+   working directory, so a dirty tree or wrong branch can't leak into the
+   result.
+2. That clone becomes a Docker build context (`Dockerfile` in this
    directory: `node:22-bookworm-slim` + `shellcheck`, matching what
    `actions/setup-node@v4` and `ludeeus/action-shellcheck` give the
    GitHub-hosted jobs).
@@ -42,8 +46,8 @@ full log followed by a summary table.
    independently -- one failing doesn't stop or hide the others, matching
    how GitHub Actions jobs in one workflow run in parallel and report
    separately.
-4. The worktree and throwaway image are removed afterward regardless of
-   outcome.
+4. The temporary clone and throwaway image are removed afterward
+   regardless of outcome.
 
 The harness itself (`Dockerfile`, `entrypoint.sh`) is always taken from the
 *current* checkout, not from the ref under test -- so this can verify refs
