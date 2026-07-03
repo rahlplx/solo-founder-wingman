@@ -1,0 +1,21 @@
+{
+  "_comment": "Canonical, ordered list of npm scripts that make up the policy-tests job, shared between .github/workflows/ci.yml and scripts/local-ci/entrypoint.sh so the two stop hand-drifting (a change to one used to have nothing keeping the other in sync). entrypoint.sh reads this file directly and loops over it. ci.yml keeps its own explicit per-script steps (for readable, individually-attributed GitHub Actions UI output), but founder-os/tests/run-ci-drift-tests.js asserts ci.yml's steps still match this list exactly, in order.",
+  "policyTestsScripts": [
+    "validate:policy-schema",
+    "check:js-syntax",
+    "scan:secrets",
+    "audit:deps",
+    "test:core",
+    "test:schema",
+    "test:claude-code",
+    "test:opencode",
+    "test:hooks",
+    "test:settings",
+    "test:redos-guard",
+    "test:audit-log",
+    "test:repo-scans",
+    "test:ci-drift",
+    "check:version-sync",
+    "typecheck:opencode"
+  ]
+}

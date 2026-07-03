@@ -8,12 +8,18 @@
 # repo owner's account (workflow runs complete in ~4s with 404s on job
 # logs, meaning the runner never actually started).
 #
-# Isolation: the target ref is checked out into a throwaway `git worktree`
-# (never the caller's working directory, which may be dirty or on an
-# unrelated branch), then that worktree becomes the Docker build context --
-# so the container only ever sees a clean, reproducible copy of exactly the
-# commit being verified, matching what a fresh GitHub-hosted runner would
-# start from.
+# Isolation: the target ref is checked out into a throwaway, self-contained
+# local clone (never the caller's working directory, which may be dirty or
+# on an unrelated branch), then that clone becomes the Docker build context
+# -- so the container only ever sees a clean, reproducible copy of exactly
+# the commit being verified, matching what a fresh GitHub-hosted runner
+# would start from. A `git clone --local` (not `git worktree add`) is used
+# deliberately: a linked worktree's `.git` is just a text pointer back to
+# this host's `.git/worktrees/...` by absolute path, which doesn't resolve
+# once copied into the container -- breaking any script that shells out to
+# `git` there (e.g. bin/scan-secrets.js's `git ls-files`). A local clone
+# gets its own real, self-contained `.git`, hardlinked to this repo's
+# objects since it's on the same filesystem, so it's just as cheap.
 #
 # Usage:
 #   scripts/local-ci/run.sh                # verify the current branch/HEAD
@@ -67,13 +73,15 @@ IMAGE_TAG="founder-os-local-ci:${SHORT_SHA}"
 # shellcheck disable=SC2317
 cleanup() {
   docker image rm -f "$IMAGE_TAG" >/dev/null 2>&1 || true
-  git worktree remove --force "$WORKTREE_DIR" >/dev/null 2>&1 || true
   rm -rf "$WORKTREE_DIR" 2>/dev/null || true
 }
 trap cleanup EXIT
 
-echo "Creating isolated worktree at ${WORKTREE_DIR}..."
-git worktree add --detach --quiet "$WORKTREE_DIR" "$SHA"
+echo "Creating isolated checkout at ${WORKTREE_DIR}..."
+# mktemp -d already created $WORKTREE_DIR as an empty dir; `git clone`
+# clones into it directly rather than needing it pre-removed.
+git clone --quiet --local "$REPO_ROOT" "$WORKTREE_DIR"
+git -C "$WORKTREE_DIR" checkout --quiet --detach "$SHA"
 
 # The harness (Dockerfile/entrypoint.sh) always comes from the *current*
 # checkout, not from the target ref -- this is what lets run.sh verify

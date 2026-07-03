@@ -78,6 +78,22 @@ return shape gained a `ruleId` field (hook I/O contract change) and
   has the safety layer actually blocked or asked about?" — previously
   there was no durable record at all, only ad hoc stderr lines scoped to
   a single hook invocation.
+- `bin/check-js-syntax.js`: `node --check`s every `.js` file in the repo
+  (`tsc --noEmit` already covers `.ts`) — a real bug-catcher, not theater;
+  this exact check would have caught the apostrophe-in-string bug in
+  `scripts/bench-schema-validators.js` and the sibling of the
+  `audit-summary.js` `--days 0` bug before either landed.
+- `bin/scan-secrets.js`: reuses `policy.json`'s own `scope:"any"`
+  secret/prod-boundary rules against every `git ls-files`-tracked file's
+  content, dogfooding existing rule data instead of adding a scanning
+  dependency.
+- `npm run audit:deps` (`npm audit`, no new dependency) and
+  `scripts/local-ci/jobs.json`, a single shared, ordered source of truth
+  for the `policy-tests` job's npm-script list — previously hand-duplicated
+  between `.github/workflows/ci.yml` and `scripts/local-ci/entrypoint.sh`
+  with nothing catching drift between the two.
+  `tests/run-ci-drift-tests.js` asserts `ci.yml`'s steps still match
+  `jobs.json` exactly, in order.
 
 ### Fixed
 - `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a

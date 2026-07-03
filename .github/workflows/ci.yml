@@ -54,6 +54,15 @@ jobs:
       - name: Validate policy.json schema
         working-directory: founder-os
         run: npm run validate:policy-schema
+      - name: Check JS syntax across the repo
+        working-directory: founder-os
+        run: npm run check:js-syntax
+      - name: Scan tracked files for leaked secrets
+        working-directory: founder-os
+        run: npm run scan:secrets
+      - name: Audit dependencies for known vulnerabilities
+        working-directory: founder-os
+        run: npm run audit:deps
       - name: Run core policy-engine unit tests
         working-directory: founder-os
         run: npm run test:core
@@ -78,6 +87,12 @@ jobs:
       - name: Run audit log tests
         working-directory: founder-os
         run: npm run test:audit-log
+      - name: Run repo scan tests (check-js-syntax.js, scan-secrets.js)
+        working-directory: founder-os
+        run: npm run test:repo-scans
+      - name: Run CI/local-ci drift check
+        working-directory: founder-os
+        run: npm run test:ci-drift
       - name: Check version sync across package.json/plugin.json/marketplace.json
         working-directory: founder-os
         run: npm run check:version-sync
