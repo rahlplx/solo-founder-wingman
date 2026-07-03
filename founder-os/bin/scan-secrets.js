@@ -14,11 +14,12 @@
  *
  * A handful of paths are deliberately excluded: this project's own
  * adversarial test fixtures and rule/schema definitions intentionally
- * contain fake secret-shaped strings (e.g. "sk_live_51ABCDEFGHIJ" in
- * tests/policy-cases.json) and docs that reference the pattern by name
- * for explanation (README.md, DECISIONS.md, CHANGELOG.md) -- none of
- * these are real leaked secrets, and excluding them by design keeps this
- * scan meaningful for everything else instead of permanently red.
+ * contain fake, live-key-shaped example strings (see tests/policy-cases.json)
+ * and docs that reference the pattern by name for explanation (README.md,
+ * DECISIONS.md, CHANGELOG.md) -- none of these are real leaked secrets, and
+ * excluding them by design keeps this scan meaningful for everything else
+ * instead of permanently red. (Deliberately not spelling out the example
+ * string itself here, so this file doesn't trip its own scan.)
  */
 
 const { execFileSync } = require('child_process');
