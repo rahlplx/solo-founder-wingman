@@ -24,12 +24,24 @@ what a command expects) bump the **major** version.
 
 ## [Unreleased]
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+## [0.3.0] - 2026-07-03
+
 Enterprise-hardening pass, informed by a maturity audit of this codebase
 plus a pattern-extraction pass over an unrelated repo (`ll-vibekit`).
 Bumps at least minor per this file's own versioning policy: `evaluate()`'s
 return shape gained a `ruleId` field (hook I/O contract change) and
 `policy.json` rules gained an optional `keywords`-adjacent schema
-(enforced, not just documented).
+(enforced, not just documented). Full before/after record of every gap
+this pass closed (and the ones deliberately left open or accepted as
+platform limitations): `FAILURE-MODES.md`.
 
 ### Added
 - `bin/validate-policy-schema.js`: full schema validation for `policy.json`
