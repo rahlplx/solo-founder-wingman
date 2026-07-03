@@ -1,47 +1,33 @@
----
-name: map-architecture
-description: Map a product into Pages/Database/Auth/API/Integrations blocks using the LEGO framework, then write the results into PRD.md's Data model and Integrations sections. Use after /founding-prompt and before first prototyping, and again whenever a major feature changes the data model.
----
+# Map Architecture Skill
 
-# Map Architecture (LEGO framework)
+Design the "Blueprint" for the founder's vision, focusing on stateful agents, scalable stacks, and visual hierarchy. Inspired by Open Design and VibeSDK (Cloudflare) patterns.
 
-The founder can't read an ERD or a system diagram. LEGO reframes
-architecture as blocks that snap together — Pages, Database, Auth, API,
-Integrations — producing one plain artifact any downstream agent
-invocation can read, instead of tribal knowledge in your head.
+## When to Activate
 
-## What to do
+- During the PATH phase, before implementation begins.
+- When adding a new major component (e.g., Auth, Database, UI System).
+- When a founder asks "how will this work under the hood?".
 
-1. **Walk the five LEGO blocks in conversation.** Pages (what users see),
-   Database (a spreadsheet in the cloud), Auth (the lock on the door), API
-   (the messenger between rooms), Integrations (plug-ins) — ask what's
-   needed for each, in plain terms, one block at a time.
+## Architectural Pillars
 
-2. **Read PRD.md first.** The map must match already-committed core
-   features and the non-goals list — it doesn't get to invent new scope
-   mid-mapping.
+1. **Stateful vs Stateless**: Identify which components need persistent state (e.g., User Profiles, Message History) vs. pure logic (e.g., Formatters, Calculators).
+2. **"Design-First" Hierarchy**: Use the 9-section `DESIGN.md` schema to map the visual direction before coding.
+3. **Infrastructure Boundaries**: Define where the data lives (Edge, Worker, Database) and how it flows.
 
-3. **Draft the product map and read it back for confirmation** before
-   writing anything, using the LEGO shape: Pages / Data / Connections /
-   User flow.
+## Instructions for Agent
 
-4. **Write into PRD.md's `## Data model` and `## Integrations` sections**
-   (the exact headers in `templates/PRD.md.tpl`) — don't fork a separate
-   architecture doc that can silently drift out of sync.
+1. **Visual Mapping**: Create an ASCII diagram of the system components and their interactions.
+2. **Stack Selection**: Recommend the most efficient "Vibe-Stack" for the job (e.g., Cloudflare Workers + D1 for speed, or Supabase for rapid auth/db).
+3. **Design Intent**: Map the visual hierarchy:
+   - **Visual Direction**: (e.g., Minimal, Brutalist, Enterprise).
+   - **Primary Actions**: What should the user see first?
+   - **State Machine**: Map the "Happy Path" and "Error Path" states.
+4. **Safety Boundaries**: Define the "Sanitized" and "Privileged" zones for data handling.
 
-5. **Cross-check integrations against reality.** For each named
-   integration, confirm a real MCP server exists in `.mcp.json` or a plan
-   is stated in `references/mcp-servers.md`. Hand the actual connection
-   work to `/integrate-service` — this skill maps, it doesn't wire.
+## Report Format
 
-6. **Flag Auth explicitly.** It's the block founders skip most. Nail down
-   "who can access what" concretely — e.g. row-level security — before any
-   building starts, not after.
-
-## Anti-patterns to avoid
-
-- Letting the Database block devolve into raw SQL/schema jargon instead of
-  spreadsheet-columns language the founder actually understands.
-- Skipping Auth because there's no login page yet.
-- Duplicating the map somewhere outside PRD.md, creating two sources of
-  truth.
+Generate a `MAP.md` or update `PRD.md` with:
+- **System Diagram**: ASCII architecture map.
+- **Data Flow**: Step-by-step trace of a core action.
+- **Visual Spec**: Hierarchy, colors, and typography direction.
+- **Scalability Note**: What happens when the user count 10x?
