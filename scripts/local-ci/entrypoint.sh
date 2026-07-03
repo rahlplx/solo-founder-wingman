@@ -64,6 +64,7 @@ job_policy_tests() {
   npm run test:schema
   npm run test:claude-code
   npm run test:opencode
+  npm run test:hooks
   npm run typecheck:opencode
 }
 

@@ -8,6 +8,23 @@
 # confirmed current (code.claude.com/docs/en/hooks, checked directly).
 set -euo pipefail
 
+# Fail-safe: an unexpected error anywhere below (e.g. `node` missing,
+# `mktemp` failing) must never leave this Stop hook crashing with no JSON
+# output at all -- that's undefined behavior for Claude Code's Stop hook
+# contract, and the opposite of the "fail open, log loudly" philosophy
+# already followed in bin/policy-check.js and adapters/opencode/plugin.ts.
+# This only fires on a genuinely unexpected failure (set -e triggers ERR);
+# every intentional exit path below calls `exit 0` directly, which does
+# not trigger ERR, so normal success/failure decisions are unaffected.
+# shellcheck disable=SC2317
+handle_unexpected_error() {
+  local exit_code=$?
+  echo "verify-gate: unexpected error (exit ${exit_code}) -- failing open, allowing the stop. Investigate this hook script." >&2
+  echo '{"decision":"allow"}'
+  exit 0
+}
+trap handle_unexpected_error ERR
+
 # stop_hook_active is true when Claude is already in a forced-continuation
 # turn caused by this same hook blocking last time. Without this check, a
 # persistently-failing test suite would re-block every subsequent turn
