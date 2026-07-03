@@ -155,13 +155,16 @@ export function evaluate(
   if (strings.length === 0) return { decision: "allow", reason: "" };
 
   const compiledRules = compileRules(rules);
+  // Lowercase each string once up front rather than inside the rule loop --
+  // content can be a multi-megabyte file, and there are ~20 rules, so
+  // re-lowercasing per rule was redundant, allocation-heavy work.
+  const checkableStrings = strings.map((s) => ({ ...s, lowerValue: s.value.toLowerCase() }));
 
   for (const rule of compiledRules) {
     const scope = rule.scope ?? "any";
-    for (const { value, origin } of strings) {
+    for (const { value, origin, lowerValue } of checkableStrings) {
       if (scope !== "any" && scope !== origin) continue;
       if (rule.lowerKeywords) {
-        const lowerValue = value.toLowerCase();
         if (!rule.lowerKeywords.some((k) => lowerValue.includes(k))) continue;
       }
       if (rule.re.test(value)) {
