@@ -26,6 +26,7 @@ import { dirname, join } from "node:path";
 // native ESM loader supports named imports from that shape directly.
 import { validatePolicyDocument } from "../../bin/validate-policy-schema.js";
 import { compileRules, lowercaseStrings, matchRule, buildReason } from "../../core/policy-engine.js";
+import { appendEntry } from "../../bin/audit-log.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const POLICY_PATH = join(__dirname, "..", "..", "policy.json");
@@ -128,6 +129,7 @@ function extractCheckableStrings(toolName: string, args: Record<string, unknown>
 interface EvaluationResult {
   decision: "allow" | "block";
   reason: string;
+  ruleId: string | null;
 }
 
 /**
@@ -153,12 +155,12 @@ export function evaluate(
   settings: Settings = SETTINGS_DEFAULTS
 ): EvaluationResult {
   const strings = extractCheckableStrings(toolName, args);
-  if (strings.length === 0) return { decision: "allow", reason: "" };
+  if (strings.length === 0) return { decision: "allow", reason: "", ruleId: null };
 
   const compiledRules = compileRules(rules);
   const checkableStrings = lowercaseStrings(strings);
   const matched = matchRule(compiledRules, checkableStrings);
-  if (!matched) return { decision: "allow", reason: "" };
+  if (!matched) return { decision: "allow", reason: "", ruleId: null };
 
   // policyStrictness isn't applied here (unlike bin/policy-check.js): "ask"
   // doesn't exist on this platform to begin with (see module comment) --
@@ -167,7 +169,7 @@ export function evaluate(
   const reason = buildReason(matched, settings.explainBeforeAct);
   // OpenCode has no "ask" mode (see module comment) -- both "block" and
   // "confirm" rule actions resolve to a hard block here.
-  return { decision: "block", reason };
+  return { decision: "block", reason, ruleId: matched.id };
 }
 
 export { loadRules, extractCheckableStrings, loadSettings };
@@ -188,8 +190,13 @@ export const FounderOsPolicy = async () => {
       input: { tool: string; sessionID: string; callID: string },
       output: { args: Record<string, unknown> }
     ) => {
-      const { decision, reason } = evaluate(rules, input.tool, output.args, settings);
+      const { decision, reason, ruleId } = evaluate(rules, input.tool, output.args, settings);
+      // Only log actual interventions (block), not the vast majority of
+      // calls that are plain allows -- see bin/audit-log.js for why. Purely
+      // observational; appendEntry() is internally best-effort and never
+      // throws, so this can't affect the decision either way.
       if (decision === "block") {
+        appendEntry({ platform: "opencode", tool: input.tool, decision, ruleId, reason });
         throw new Error(reason);
       }
     },

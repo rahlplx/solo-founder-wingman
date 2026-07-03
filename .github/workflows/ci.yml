@@ -75,6 +75,9 @@ jobs:
       - name: Run ReDoS guard-rail tests
         working-directory: founder-os
         run: npm run test:redos-guard
+      - name: Run audit log tests
+        working-directory: founder-os
+        run: npm run test:audit-log
       - name: Check version sync across package.json/plugin.json/marketplace.json
         working-directory: founder-os
         run: npm run check:version-sync

@@ -25,6 +25,7 @@ const fs = require('fs');
 const path = require('path');
 const { validatePolicyDocument } = require('./validate-policy-schema.js');
 const { compileRules, lowercaseStrings, matchRule, buildReason } = require('../core/policy-engine.js');
+const { appendEntry } = require('./audit-log.js');
 
 const POLICY_PATH = path.join(__dirname, '..', 'policy.json');
 const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
@@ -131,18 +132,18 @@ function extractCheckableStrings(payload) {
  */
 function evaluate(rules, payload, settings = SETTINGS_DEFAULTS) {
   const strings = extractCheckableStrings(payload);
-  if (strings.length === 0) return { decision: 'allow', reason: '' };
+  if (strings.length === 0) return { decision: 'allow', reason: '', ruleId: null };
 
   const compiledRules = compileRules(rules);
   const checkableStrings = lowercaseStrings(strings);
   const matched = matchRule(compiledRules, checkableStrings);
-  if (!matched) return { decision: 'allow', reason: '' };
+  if (!matched) return { decision: 'allow', reason: '', ruleId: null };
 
   const strict = settings.policyStrictness === 'strict';
   let decision = matched.action === 'block' ? 'deny' : 'ask';
   if (strict && decision === 'ask') decision = 'deny';
   const reason = buildReason(matched, settings.explainBeforeAct);
-  return { decision, reason };
+  return { decision, reason, ruleId: matched.id };
 }
 
 function respond(decision, reason) {
@@ -176,7 +177,14 @@ async function main() {
 
   const rules = loadPolicy();
   const settings = loadSettings();
-  const { decision, reason } = evaluate(rules, payload, settings);
+  const { decision, reason, ruleId } = evaluate(rules, payload, settings);
+  // Only log actual interventions (ask/deny), not the vast majority of
+  // calls that are plain allows -- see bin/audit-log.js for why. This is
+  // purely observational and must never affect the response either way;
+  // appendEntry() is internally best-effort and never throws.
+  if (decision !== 'allow') {
+    appendEntry({ platform: 'claude-code', tool: payload.tool_name || '', decision, ruleId, reason });
+  }
   return respond(decision, reason);
 }
 
