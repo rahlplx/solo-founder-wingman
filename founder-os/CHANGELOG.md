@@ -24,6 +24,69 @@ what a command expects) bump the **major** version.
 
 ## [Unreleased]
 
+Enterprise-hardening pass, informed by a maturity audit of this codebase
+plus a pattern-extraction pass over an unrelated repo (`ll-vibekit`).
+Bumps at least minor per this file's own versioning policy: `evaluate()`'s
+return shape gained a `ruleId` field (hook I/O contract change) and
+`policy.json` rules gained an optional `keywords`-adjacent schema
+(enforced, not just documented).
+
+### Added
+- `bin/validate-policy-schema.js`: full schema validation for `policy.json`
+  (`schema/policy.schema.json`), not just "is `rules` an array". Catches a
+  real bug class: a typo'd rule field (e.g. `patttern` instead of
+  `pattern`) used to silently compile to a match-everything regex via `new
+  RegExp(undefined)`, which combined with `action:"block"` meant denying
+  every tool call with nothing catching it. Chosen over an ajv-based
+  competitor after benchmarking both (~20x faster cold-start, zero
+  dependency footprint) — see `DECISIONS.md`.
+- `founder-os/DECISIONS.md`: new ADR-lite "tiebreaker" doc for
+  evidence-based engineering decisions going forward.
+- Bash hooks (`verify-gate.sh`, `doc-sync.sh`) are now fail-safe: a
+  top-level `trap ... ERR` guarantees graceful degradation (a valid
+  `{"decision":"allow"}` for the Stop hook, a skipped-but-non-blocking
+  append for the PostToolUse hook) instead of crashing mid-script with no
+  output on an unexpected error. Both previously had zero test coverage;
+  `tests/run-hook-tests.js` now covers both end-to-end via real temp git
+  repos.
+- `settings.json`'s 4 fields are now actually read and applied
+  (previously dead config): `verifyGateOnDone`/`docSyncOnCommit` can turn
+  either hook off entirely; `policyStrictness: "strict"` upgrades a
+  would-be "ask" to a hard "deny" on the Claude Code adapter;
+  `explainBeforeAct: false` trims a hook's reason to just the rule id.
+  Shipped `policyStrictness` default changed from `"strict"` to
+  `"normal"` since `"strict"` now has real teeth.
+- `bin/check-version-sync.js`: fails if the version string drifts across
+  `package.json`/`plugin.json`/`marketplace.json`, previously kept in sync
+  only by discipline.
+- ReDoS guard-rail test (`tests/run-redos-guard-tests.js`): every
+  `scope:"any"` rule (which runs against arbitrary, potentially large file
+  content) is benchmarked against large synthetic strings with a time
+  budget, to catch a future catastrophic-backtracking pattern before it
+  ships.
+- `founder-os/core/policy-engine.js`: shared, platform-agnostic matching
+  core, extracted from what used to be two independently hand-maintained
+  copies in `bin/policy-check.js` and `adapters/opencode/plugin.ts`. A
+  future 3rd/4th agent-platform adapter now only needs its own thin
+  platform glue, not a full reimplementation. Verified zero behavior
+  drift (129 test cases identical before/after).
+- Structured audit log (`bin/audit-log.js`): every real policy
+  intervention (ask/deny/block, not plain allows) is appended as a
+  JSON-line to `founder-os/.audit/audit.log`, gitignored, best-effort and
+  never able to affect the actual decision. `bin/audit-summary.js` and the
+  new `/audit-summary` skill turn it into a plain-English answer to "what
+  has the safety layer actually blocked or asked about?" — previously
+  there was no durable record at all, only ad hoc stderr lines scoped to
+  a single hook invocation.
+
+### Fixed
+- `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a
+  bad-pattern compile failure with no log at all, unlike
+  `bin/policy-check.js`'s equivalent catch. Now logs consistently (via the
+  shared core).
+- CI's path-trigger filter missed the root `.claude-plugin/marketplace.json`
+  (which `validate-json` actually checks) and `scripts/local-ci/**`.
+
 ## [0.2.0] - 2026-07-03
 
 ### Added
