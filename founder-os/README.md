@@ -66,7 +66,17 @@ actual evidence instead of the agent's own say-so.
   automatically block a specific command.
 - **OpenCode has no "ask for confirmation" mode** — only allow or hard
   block. Rules meant to just pause for confirmation on Claude Code become
-  full blocks on OpenCode.
+  full blocks on OpenCode. Confirmed live: both a `"block"` rule and a
+  `"confirm"` rule surface identically as a thrown tool error.
+- **OpenCode doesn't auto-discover founder-os's skills, subagents, or
+  commands.** The safety hook works out of the box, but the skill
+  library needs `skills.paths` explicitly configured (see
+  `templates/opencode.jsonc.tpl`), and the 3 bundled subagents and 5
+  commands currently have no working path at all — OpenCode's config
+  has no path-override for those two, only fixed
+  `.opencode/agent/`/`.opencode/command/` project directories. Confirmed
+  live via `opencode debug skill`/`opencode agent list` and a real
+  failed command invocation; see `FAILURE-MODES.md`.
 - **Secret detection is narrow by design, not exhaustive.** `policy.json`
   currently recognizes one specific pattern (`sk_live_...`, a live Stripe
   secret key) — there's no generic API-key, AWS-key, or JWT pattern yet.
@@ -75,16 +85,19 @@ actual evidence instead of the agent's own say-so.
   theoretical evasion ceiling like the regex-interception point above —
   worth knowing if you're integrating a service `policy.json` doesn't
   already have a rule for.
-- **Live-verified on Claude Code; OpenCode and Codex still untested
+- **Live-verified on Claude Code and OpenCode; Codex still untested
   end-to-end.** Loading the plugin into a real Claude Code session
   (`claude --plugin-dir founder-os/`) confirmed the PreToolUse hook's
   three decision states (allow/ask/deny), the Stop hook's
   approve/block/re-approve sequence including the anti-infinite-loop
   safeguard, and skill/agent/command discovery — and caught a real bug
   in the process (the Stop hook was emitting a decision value Claude
-  Code's schema doesn't accept; see `FAILURE-MODES.md` #19). OpenCode and
-  Codex are still only tested against their matching/adapter logic
-  directly (`npm test`), not inside a live session of either.
+  Code's schema doesn't accept; see `FAILURE-MODES.md` #19). A real
+  OpenCode session (`opencode run` with `adapters/opencode/plugin.ts`
+  loaded) confirmed the safety hook and audit log, and surfaced the
+  skill/subagent/command discovery gaps described above. Codex is still
+  only tested against its config logic directly (`npm test`), not inside
+  a live session.
 
 Every generated project also gets its own copy of the platform-limitations
 table in its `AGENTS.md`, in plain language, not just here.
@@ -96,12 +109,23 @@ still open.
 
 ## Installing
 
-Via a marketplace (recommended once published): add this repo as a
-marketplace source, then install the `founder-os` plugin — see
-`.claude-plugin/marketplace.json` at the repo root.
+**Claude Code** — via a marketplace (recommended once published): add this
+repo as a marketplace source, then install the `founder-os` plugin — see
+`.claude-plugin/marketplace.json` at the repo root. For local development,
+point your Claude Code plugin config directly at this `founder-os/`
+directory.
 
-For local development: point your Claude Code/OpenCode/Codex plugin config
-directly at this `founder-os/` directory.
+**OpenCode** — copy `templates/opencode.jsonc.tpl` into the founder's
+project root as `opencode.jsonc` (not `.json` — see the template's own
+comments for why), filling in `{{FOUNDER_OS_PATH}}`. The `plugin` entry
+alone only wires up the safety hook; `skills.paths` is required too, or
+none of founder-os's skills will be discoverable (verified live — see
+`FAILURE-MODES.md`). Note this only gets you the safety layer and the
+skill library — the 3 bundled subagents and 5 commands aren't reachable
+under OpenCode at all currently; see `FAILURE-MODES.md` for why.
+
+**Codex CLI** — see `adapters/codex/config.toml.snippet`; no code-level
+hook exists, only sandbox policy defaults.
 
 ## Development
 
