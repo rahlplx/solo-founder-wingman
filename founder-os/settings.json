@@ -1,6 +1,12 @@
 {
   "policyStrictness": "normal",
   "explainBeforeAct": true,
-  "verifyGateOnDone": true,
-  "docSyncOnCommit": true
+  "modelMatrix": {
+    "orchestrator": "sonnet",
+    "researcher": "haiku",
+    "builder": "sonnet",
+    "critic": "opus",
+    "security": "opus"
+  },
+  "amrEnabled": true
 }

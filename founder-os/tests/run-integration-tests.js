@@ -44,7 +44,7 @@ async function runTests() {
   if (fail > 0) process.exit(1);
 }
 
-testTasteSkillIntegrations().then(() => testUIUXProMaxIntegrations()).then(() => testImpeccableIntegrations()).then(() => testSuperpowersIntegrations()).then(() => testOpenDesignIntegrations()).then(() => testAddySkillsIntegrations()).then(() => testVibeCodeProIntegrations()).then(() => testBKitIntegrations()).then(() => testContextEngIntegrations()).then(() => testCavemanIntegrations()).then(() => testMattPocockIntegrations()).then(() => testGStackIntegrations()).then(() => testECCIntegrations()).then(() => runTests()).catch(err => {
+testAMRIntegrations().then(() => testFrameworkGapIntegrations()).then(() => testJudgeOutputIntegrations()).then(() => testTasteSkillIntegrations()).then(() => testUIUXProMaxIntegrations()).then(() => testImpeccableIntegrations()).then(() => testSuperpowersIntegrations()).then(() => testOpenDesignIntegrations()).then(() => testAddySkillsIntegrations()).then(() => testVibeCodeProIntegrations()).then(() => testBKitIntegrations()).then(() => testContextEngIntegrations()).then(() => testCavemanIntegrations()).then(() => testMattPocockIntegrations()).then(() => testGStackIntegrations()).then(() => testECCIntegrations()).then(() => runTests()).catch(err => {
   console.error(err);
   process.exit(1);
 });
@@ -211,6 +211,52 @@ async function testTasteSkillIntegrations() {
     console.log('✅ PASS: apply-taste skill exists');
   } else {
     console.log('❌ FAIL: apply-taste skill missing');
+  }
+}
+
+// Update the main run loop call
+
+async function testJudgeOutputIntegrations() {
+  console.log('\nTesting Judge Output (Cognitive Pattern) Integrations...');
+  const skillPath = path.join(__dirname, '../skills/judge-output/SKILL.md');
+  if (fs.existsSync(skillPath)) {
+    console.log('✅ PASS: judge-output skill exists');
+  } else {
+    console.log('❌ FAIL: judge-output skill missing');
+  }
+}
+
+// Update the main run loop call
+
+async function testFrameworkGapIntegrations() {
+  console.log('\nTesting Framework & Format Gap Integrations...');
+
+  // Verify registry exists
+  const registryPath = path.join(__dirname, '../skills/registry.json');
+  if (fs.existsSync(registryPath)) {
+    console.log('✅ PASS: skills registry (Skills.lock) exists');
+  } else {
+    console.log('❌ FAIL: skills registry missing');
+  }
+
+  // Verify handoff skill
+  const handoffPath = path.join(__dirname, '../skills/handoff/SKILL.md');
+  if (fs.existsSync(handoffPath)) {
+    console.log('✅ PASS: handoff skill exists');
+  } else {
+    console.log('❌ FAIL: handoff skill missing');
+  }
+}
+
+// Update the main run loop call
+
+async function testAMRIntegrations() {
+  console.log('\nTesting Model Router (AMR) Integrations...');
+  const skillPath = path.join(__dirname, '../skills/model-router/SKILL.md');
+  if (fs.existsSync(skillPath)) {
+    console.log('✅ PASS: model-router skill exists');
+  } else {
+    console.log('❌ FAIL: model-router skill missing');
   }
 }
 

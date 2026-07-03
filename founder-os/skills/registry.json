@@ -1,0 +1,18 @@
+{
+  "version": "1.0.0",
+  "skills": [
+    { "name": "apply-taste", "version": "1.0.0", "source": "taste-skill" },
+    { "name": "brainstorming", "version": "1.0.0", "source": "superpowers" },
+    { "name": "ceo-review", "version": "1.0.0", "source": "gstack" },
+    { "name": "git-save-points", "version": "1.0.0", "source": "addy-skills" },
+    { "name": "grill-me", "version": "1.0.0", "source": "mattpocock" },
+    { "name": "judge-output", "version": "1.0.0", "source": "cognitive-pattern" },
+    { "name": "manage-context", "version": "1.0.0", "source": "context-eng" },
+    { "name": "map-architecture", "version": "1.1.0", "source": "open-design/vibe-stack" },
+    { "name": "rtk-efficiency", "version": "1.0.0", "source": "caveman" },
+    { "name": "ship-checklist", "version": "1.0.0", "source": "bkit" },
+    { "name": "spec-discovery", "version": "1.0.0", "source": "vibecode-pro" },
+    { "name": "strategic-compact", "version": "1.0.0", "source": "ECC" },
+    { "name": "verify-harness", "version": "1.0.0", "source": "meta-learning" }
+  ]
+}
