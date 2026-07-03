@@ -19,6 +19,7 @@ const path = require('path');
 const BIN_DIR = path.join(__dirname, '..', 'bin');
 const VERIFY_GATE = path.join(BIN_DIR, 'verify-gate.sh');
 const DOC_SYNC = path.join(BIN_DIR, 'doc-sync.sh');
+const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
 
 let pass = 0;
 let fail = 0;
@@ -44,6 +45,22 @@ function mkTempRepo() {
 function commitAll(dir, message) {
   execFileSync('git', ['add', '-A'], { cwd: dir });
   execFileSync('git', ['commit', '--quiet', '-m', message], { cwd: dir });
+}
+
+// Both scripts resolve settings.json relative to their own location
+// (always founder-os/settings.json), not via cwd -- so testing the
+// verifyGateOnDone/docSyncOnCommit toggles means temporarily overwriting
+// the real file, always restored afterward via try/finally even on
+// assertion failure.
+function withSettingsOverride(overrides, fn) {
+  const original = fs.readFileSync(SETTINGS_PATH, 'utf8');
+  const merged = { ...JSON.parse(original), ...overrides };
+  fs.writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2) + '\n');
+  try {
+    fn();
+  } finally {
+    fs.writeFileSync(SETTINGS_PATH, original);
+  }
 }
 
 function runScript(scriptPath, payload, opts = {}) {
@@ -161,6 +178,20 @@ function testVerifyGate() {
       `stdout=${JSON.stringify(stdout)} stderr=${JSON.stringify(stderr)} status=${status}`
     );
   }
+
+  // settings.json's verifyGateOnDone=false allows even with a failing test
+  // script -- previously dead config, now actually wired up.
+  withSettingsOverride({ verifyGateOnDone: false }, () => {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', scripts: { test: 'exit 1' } }));
+    commitAll(dir, 'init');
+    const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
+    check(
+      'verify-gate: settings.json verifyGateOnDone=false allows even with a failing test script',
+      stdout.trim() === '{"decision":"allow"}' && status === 0,
+      stdout
+    );
+  });
 }
 
 function testDocSync() {
@@ -221,6 +252,23 @@ function testDocSync() {
       `stderr=${JSON.stringify(stderr)} status=${status}`
     );
   }
+
+  // settings.json's docSyncOnCommit=false skips the append even on a
+  // real, recent git commit -- previously dead config, now actually
+  // wired up.
+  withSettingsOverride({ docSyncOnCommit: false }, () => {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n### Added\n');
+    commitAll(dir, 'a commit that should not be appended');
+    const before = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    const { status } = runScript(
+      DOC_SYNC,
+      { tool_input: { command: 'git commit -m "a commit that should not be appended"' } },
+      { cwd: dir }
+    );
+    const after = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    check('doc-sync: settings.json docSyncOnCommit=false leaves CHANGELOG.md untouched', status === 0 && before === after);
+  });
 }
 
 testVerifyGate();

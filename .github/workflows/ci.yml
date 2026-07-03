@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - "founder-os/**"
+      - ".claude-plugin/marketplace.json"
+      - "scripts/local-ci/**"
       - ".github/workflows/ci.yml"
   push:
     branches: [main]
     paths:
       - "founder-os/**"
+      - ".claude-plugin/marketplace.json"
+      - "scripts/local-ci/**"
 
 permissions:
   contents: read
@@ -62,6 +66,15 @@ jobs:
       - name: Run bash hook tests (verify-gate.sh, doc-sync.sh)
         working-directory: founder-os
         run: npm run test:hooks
+      - name: Run settings.json-driven behavior tests
+        working-directory: founder-os
+        run: npm run test:settings
+      - name: Run ReDoS guard-rail tests
+        working-directory: founder-os
+        run: npm run test:redos-guard
+      - name: Check version sync across package.json/plugin.json/marketplace.json
+        working-directory: founder-os
+        run: npm run check:version-sync
       - name: Typecheck OpenCode adapter
         working-directory: founder-os
         run: npm run typecheck:opencode

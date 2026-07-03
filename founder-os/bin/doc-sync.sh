@@ -29,7 +29,24 @@ trap handle_unexpected_error ERR
 PAYLOAD="$(cat)"
 COMMAND="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const p=JSON.parse(d);process.stdout.write((p.tool_input&&p.tool_input.command)||"")}catch(e){}})' <<<"$PAYLOAD")"
 
-if [[ "$COMMAND" == *"git commit"* ]]; then
+# settings.json's docSyncOnCommit (default true) lets a founder turn this
+# off entirely without editing hooks.json -- was previously unread by any
+# script despite being a documented setting.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SETTINGS_PATH="$SCRIPT_DIR/../settings.json"
+DOC_SYNC_ON_COMMIT="true"
+if [[ -f "$SETTINGS_PATH" ]]; then
+  DOC_SYNC_ON_COMMIT="$(node -e '
+    try {
+      const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+      process.stdout.write(s.docSyncOnCommit === false ? "false" : "true");
+    } catch (e) {
+      process.stdout.write("true");
+    }
+  ' "$SETTINGS_PATH")"
+fi
+
+if [[ "$DOC_SYNC_ON_COMMIT" == "true" && "$COMMAND" == *"git commit"* ]]; then
   CHANGELOG="$(git rev-parse --show-toplevel 2>/dev/null || echo .)/CHANGELOG.md"
   # Only append if HEAD's commit timestamp is very recent -- this hook only
   # knows the *command text* contained "git commit", not whether it actually

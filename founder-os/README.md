@@ -64,6 +64,14 @@ actual evidence instead of the agent's own say-so.
 - **OpenCode has no "ask for confirmation" mode** — only allow or hard
   block. Rules meant to just pause for confirmation on Claude Code become
   full blocks on OpenCode.
+- **Secret detection is narrow by design, not exhaustive.** `policy.json`
+  currently recognizes one specific pattern (`sk_live_...`, a live Stripe
+  secret key) — there's no generic API-key, AWS-key, or JWT pattern yet.
+  Pasting a different provider's live credential into a command or file
+  won't be caught. This is a real gap in current coverage, not just a
+  theoretical evasion ceiling like the regex-interception point above —
+  worth knowing if you're integrating a service `policy.json` doesn't
+  already have a rule for.
 - **This plugin has not yet been installed and exercised inside a live
   Claude Code, OpenCode, or Codex session.** Everything has been tested
   against the actual matching/adapter logic directly (`npm test`) and

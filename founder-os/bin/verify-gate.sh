@@ -51,6 +51,28 @@ if [[ "$STOP_HOOK_ACTIVE" == "true" ]]; then
   exit 0
 fi
 
+# settings.json's verifyGateOnDone (default true) lets a founder turn this
+# gate off entirely without editing hooks.json -- was previously unread by
+# any script despite being a documented setting.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SETTINGS_PATH="$SCRIPT_DIR/../settings.json"
+VERIFY_GATE_ON_DONE="true"
+if [[ -f "$SETTINGS_PATH" ]]; then
+  VERIFY_GATE_ON_DONE="$(node -e '
+    try {
+      const s = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+      process.stdout.write(s.verifyGateOnDone === false ? "false" : "true");
+    } catch (e) {
+      process.stdout.write("true");
+    }
+  ' "$SETTINGS_PATH")"
+fi
+
+if [[ "$VERIFY_GATE_ON_DONE" != "true" ]]; then
+  echo '{"decision":"allow"}'
+  exit 0
+fi
+
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
 # Check specifically for scripts.test, not just the substring "test" anywhere

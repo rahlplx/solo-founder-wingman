@@ -26,6 +26,24 @@ const path = require('path');
 const { validatePolicyDocument } = require('./validate-policy-schema.js');
 
 const POLICY_PATH = path.join(__dirname, '..', 'policy.json');
+const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
+const SETTINGS_DEFAULTS = { policyStrictness: 'normal', explainBeforeAct: true };
+
+/**
+ * Loads settings.json tolerantly: a missing or malformed file falls back
+ * to defaults rather than failing the whole hook -- these are tuning
+ * knobs, not safety-critical config the way policy.json is. Previously
+ * this file existed but nothing read it; wiring it up here.
+ */
+function loadSettings() {
+  try {
+    const raw = fs.readFileSync(SETTINGS_PATH, 'utf8');
+    const parsed = JSON.parse(raw);
+    return { ...SETTINGS_DEFAULTS, ...parsed };
+  } catch {
+    return SETTINGS_DEFAULTS;
+  }
+}
 
 /**
  * Full schema validation (bin/validate-policy-schema.js -- see
@@ -134,8 +152,20 @@ function compileRules(rules) {
  * Pure evaluation: given a rule list and a hook payload, return the
  * decision without touching stdin/stdout/process.exit. This is what both
  * the CLI entrypoint below and the test runner call.
+ *
+ * `settings` (optional, defaults to SETTINGS_DEFAULTS via the 3rd param
+ * default) applies two tuning knobs from settings.json:
+ * - policyStrictness: "strict" upgrades a would-be "ask" (confirm-action
+ *   rule) to "deny" -- for a founder who wants zero interactive
+ *   confirmations, only hard stops. "normal" (default) leaves ask/deny
+ *   exactly as each rule's own `action` field says, matching this
+ *   project's behavior before this setting was wired up.
+ * - explainBeforeAct: false trims the reason to just the rule id, omitting
+ *   the full message -- for a founder who's seen the same rule's
+ *   explanation enough times and wants less text. true (default) keeps
+ *   the full message, matching prior behavior.
  */
-function evaluate(rules, payload) {
+function evaluate(rules, payload, settings = SETTINGS_DEFAULTS) {
   const strings = extractCheckableStrings(payload);
   if (strings.length === 0) return { decision: 'allow', reason: '' };
 
@@ -144,6 +174,8 @@ function evaluate(rules, payload) {
   // content can be a multi-megabyte file, and there are ~20 rules, so
   // re-lowercasing per rule was redundant, allocation-heavy work.
   const checkableStrings = strings.map((s) => ({ ...s, lowerValue: s.value.toLowerCase() }));
+  const strict = settings.policyStrictness === 'strict';
+  const explain = settings.explainBeforeAct !== false;
 
   for (const rule of compiledRules) {
     const scope = rule.scope || 'any';
@@ -153,8 +185,10 @@ function evaluate(rules, payload) {
         if (!rule.keywords.some((k) => lowerValue.includes(k))) continue;
       }
       if (rule.re.test(value)) {
-        const decision = rule.action === 'block' ? 'deny' : 'ask';
-        return { decision, reason: `[${rule.id}] ${rule.message}` };
+        let decision = rule.action === 'block' ? 'deny' : 'ask';
+        if (strict && decision === 'ask') decision = 'deny';
+        const reason = explain ? `[${rule.id}] ${rule.message}` : `[${rule.id}]`;
+        return { decision, reason };
       }
     }
   }
@@ -192,7 +226,8 @@ async function main() {
   }
 
   const rules = loadPolicy();
-  const { decision, reason } = evaluate(rules, payload);
+  const settings = loadSettings();
+  const { decision, reason } = evaluate(rules, payload, settings);
   return respond(decision, reason);
 }
 
@@ -203,4 +238,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { evaluate, extractCheckableStrings, loadPolicy };
+module.exports = { evaluate, extractCheckableStrings, loadPolicy, loadSettings };

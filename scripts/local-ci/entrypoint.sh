@@ -65,6 +65,9 @@ job_policy_tests() {
   npm run test:claude-code
   npm run test:opencode
   npm run test:hooks
+  npm run test:settings
+  npm run test:redos-guard
+  npm run check:version-sync
   npm run typecheck:opencode
 }
 

@@ -28,6 +28,30 @@ import { validatePolicyDocument } from "../../bin/validate-policy-schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const POLICY_PATH = join(__dirname, "..", "..", "policy.json");
+const SETTINGS_PATH = join(__dirname, "..", "..", "settings.json");
+
+interface Settings {
+  policyStrictness?: "normal" | "strict";
+  explainBeforeAct?: boolean;
+}
+
+const SETTINGS_DEFAULTS: Settings = { policyStrictness: "normal", explainBeforeAct: true };
+
+/**
+ * Loads settings.json tolerantly: a missing or malformed file falls back
+ * to defaults rather than crashing plugin init -- these are tuning knobs,
+ * not safety-critical config the way policy.json is. Note: policyStrictness
+ * has no observable effect on this adapter and isn't applied below -- see
+ * evaluate()'s comment for why.
+ */
+function loadSettings(): Settings {
+  try {
+    const raw = readFileSync(SETTINGS_PATH, "utf8");
+    return { ...SETTINGS_DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    return SETTINGS_DEFAULTS;
+  }
+}
 
 interface PolicyRule {
   id: string;
@@ -165,7 +189,8 @@ function compileRules(rules: PolicyRule[]): CompiledRule[] {
 export function evaluate(
   rules: PolicyRule[],
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  settings: Settings = SETTINGS_DEFAULTS
 ): EvaluationResult {
   const strings = extractCheckableStrings(toolName, args);
   if (strings.length === 0) return { decision: "allow", reason: "" };
@@ -175,6 +200,11 @@ export function evaluate(
   // content can be a multi-megabyte file, and there are ~20 rules, so
   // re-lowercasing per rule was redundant, allocation-heavy work.
   const checkableStrings = strings.map((s) => ({ ...s, lowerValue: s.value.toLowerCase() }));
+  // policyStrictness isn't applied here (unlike bin/policy-check.js): "ask"
+  // doesn't exist on this platform to begin with (see module comment) --
+  // confirm-action rules already resolve to a hard block regardless of
+  // strictness, so the setting has nothing left to escalate.
+  const explain = settings.explainBeforeAct !== false;
 
   for (const rule of compiledRules) {
     const scope = rule.scope ?? "any";
@@ -186,7 +216,8 @@ export function evaluate(
       if (rule.re.test(value)) {
         // OpenCode has no "ask" mode (see module comment) -- both "block"
         // and "confirm" rule actions resolve to a hard block here.
-        return { decision: "block", reason: `[${rule.id}] ${rule.message}` };
+        const reason = explain ? `[${rule.id}] ${rule.message}` : `[${rule.id}]`;
+        return { decision: "block", reason };
       }
     }
   }
@@ -194,7 +225,7 @@ export function evaluate(
   return { decision: "allow", reason: "" };
 }
 
-export { loadRules, extractCheckableStrings };
+export { loadRules, extractCheckableStrings, loadSettings };
 
 export const FounderOsPolicy = async () => {
   let rules: PolicyRule[] = [];
@@ -205,13 +236,14 @@ export const FounderOsPolicy = async () => {
     // a missing or malformed policy.json -- but say so loudly.
     console.error("[founder-os] Failed to load policy rules:", err);
   }
+  const settings = loadSettings();
 
   return {
     "tool.execute.before": async (
       input: { tool: string; sessionID: string; callID: string },
       output: { args: Record<string, unknown> }
     ) => {
-      const { decision, reason } = evaluate(rules, input.tool, output.args);
+      const { decision, reason } = evaluate(rules, input.tool, output.args, settings);
       if (decision === "block") {
         throw new Error(reason);
       }
