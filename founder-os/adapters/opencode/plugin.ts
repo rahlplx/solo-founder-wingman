@@ -139,8 +139,15 @@ function compileRules(rules: PolicyRule[]): CompiledRule[] {
     let re: RegExp;
     try {
       re = new RegExp(rule.pattern, rule.flags ?? "");
-    } catch {
-      continue; // malformed pattern -- skip rather than crash the session
+    } catch (err) {
+      // Should be unreachable in normal operation -- loadRules() already
+      // rejects non-compiling patterns via validatePolicyDocument() before
+      // compileRules() ever runs. Logged (matching bin/policy-check.js's
+      // equivalent catch, which previously logged this while this one
+      // didn't) as defense-in-depth for any future caller that constructs
+      // a CompiledRule[] without going through loadRules() first.
+      console.error(`[founder-os] bad pattern in rule ${rule.id}:`, err);
+      continue;
     }
     const lowerKeywords = rule.keywords ? rule.keywords.map((k) => k.toLowerCase()) : null;
     compiled.push({ ...rule, re, lowerKeywords });
