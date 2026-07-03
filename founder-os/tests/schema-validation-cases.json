@@ -1,0 +1,195 @@
+{
+  "_comment": "Adversarial fixture for bin/validate-policy-schema.js and bin/validate-policy-schema.ajv.js, run by both scripts/bench-schema-validators.js (benchmark) and tests/run-schema-validation-tests.js (regression). Each case is a full policy.json-shaped document; expectValid says whether validatePolicyDocument(doc) should return zero errors.",
+  "cases": [
+    {
+      "description": "minimal valid rule passes",
+      "expectValid": true,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "safe-example", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "valid rule with all optional fields passes",
+      "expectValid": true,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "safe-example-2", "category": "test", "scope": "any", "pattern": "\\bdanger\\b", "flags": "i", "action": "confirm", "message": "example", "keywords": ["danger"] }
+        ]
+      }
+    },
+    {
+      "description": "the real bug: typo'd pattern field name leaves pattern undefined -- would compile to /(?:)/ and match everything",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "typo-bug", "category": "test", "patttern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "empty string pattern matches everything (same bug class as above, different cause)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "empty-pattern", "category": "test", "pattern": "", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "explicit .* pattern matches everything including empty string",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "universal-star", "category": "test", "pattern": ".*", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "action has wrong type (number instead of string)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-action-type", "category": "test", "pattern": "\\bdanger\\b", "action": 1, "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "action has an invalid enum value",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-action-value", "category": "test", "pattern": "\\bdanger\\b", "action": "deny", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "scope has an invalid enum value",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-scope", "category": "test", "scope": "everything", "pattern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "missing id field",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "missing message field",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "no-message", "category": "test", "pattern": "\\bdanger\\b", "action": "block" }
+        ]
+      }
+    },
+    {
+      "description": "duplicate rule ids",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "dup-id", "category": "test", "pattern": "\\bone\\b", "action": "block", "message": "example" },
+          { "id": "dup-id", "category": "test", "pattern": "\\btwo\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "id with invalid format (uppercase and spaces)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "Bad ID Format", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "pattern does not compile as a valid regex",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-regex", "category": "test", "pattern": "(unbalanced", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "flags contains an invalid character",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-flags", "category": "test", "pattern": "\\bdanger\\b", "flags": "x", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "keywords is a string instead of an array",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-keywords-type", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example", "keywords": "danger" }
+        ]
+      }
+    },
+    {
+      "description": "keywords array contains a non-string element",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-keywords-item", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example", "keywords": ["danger", 1] }
+        ]
+      }
+    },
+    {
+      "description": "document version is missing",
+      "expectValid": false,
+      "doc": {
+        "rules": [
+          { "id": "no-doc-version", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "document version is malformed (not semver)",
+      "expectValid": false,
+      "doc": {
+        "version": "not-a-version",
+        "rules": [
+          { "id": "bad-doc-version", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "rules array is empty",
+      "expectValid": false,
+      "doc": { "version": "1.0.0", "rules": [] }
+    },
+    {
+      "description": "rules is not an array",
+      "expectValid": false,
+      "doc": { "version": "1.0.0", "rules": { "id": "not-an-array" } }
+    }
+  ]
+}

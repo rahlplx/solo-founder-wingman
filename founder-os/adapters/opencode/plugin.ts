@@ -22,6 +22,9 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+// bin/validate-policy-schema.js is a CommonJS module (module.exports = {...});
+// Node's native ESM loader supports named imports from that shape directly.
+import { validatePolicyDocument } from "../../bin/validate-policy-schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const POLICY_PATH = join(__dirname, "..", "..", "policy.json");
@@ -43,20 +46,26 @@ interface CompiledRule extends PolicyRule {
 }
 
 /**
- * Throws on a malformed policy.json (missing/non-array "rules") instead of
- * silently returning undefined. Without this, a malformed policy.json used
- * to invert the intended fail-open behavior into fail-everything-closed:
+ * Full schema validation (bin/validate-policy-schema.js -- see
+ * founder-os/DECISIONS.md for why hand-rolled over ajv), not just "is
+ * rules an array". Throws on a malformed policy.json instead of silently
+ * returning undefined. Without this, a malformed policy.json used to
+ * invert the intended fail-open behavior into fail-everything-closed:
  * loadRules() returned undefined without throwing, the try/catch in
  * FounderOsPolicy() below never fired, and the next evaluate() call threw
  * on a non-iterable from inside the uncaught tool.execute.before hook --
  * which this module's own design treats as a block, so every subsequent
  * tool call got denied instead of the documented "fail open, log loudly."
+ * The schema check additionally catches a malformed *rule* (e.g. a typo'd
+ * "pattern" field compiling to an accidentally-universal regex) that would
+ * otherwise pass this shape check but silently misbehave at match time.
  */
 function loadRules(): PolicyRule[] {
   const raw = readFileSync(POLICY_PATH, "utf8");
   const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed.rules)) {
-    throw new Error("policy.json is missing a valid 'rules' array");
+  const errors = validatePolicyDocument(parsed);
+  if (errors.length > 0) {
+    throw new Error(`policy.json failed schema validation:\n  - ${errors.join("\n  - ")}`);
   }
   return parsed.rules as PolicyRule[];
 }

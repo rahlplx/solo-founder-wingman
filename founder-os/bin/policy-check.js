@@ -23,14 +23,26 @@
 
 const fs = require('fs');
 const path = require('path');
+const { validatePolicyDocument } = require('./validate-policy-schema.js');
 
 const POLICY_PATH = path.join(__dirname, '..', 'policy.json');
 
+/**
+ * Full schema validation (bin/validate-policy-schema.js -- see
+ * founder-os/DECISIONS.md for why hand-rolled over ajv), not just "is
+ * rules an array". A malformed rule (e.g. a typo'd "pattern" field) used
+ * to compile to new RegExp(undefined) -> /(?:)/, silently matching every
+ * string -- with action:"block" that means denying every single tool
+ * call, and nothing before this caught it. Throwing here, loudly, at load
+ * time is deliberate: better to fail fast and visibly than to load a rule
+ * set that's quietly wrong.
+ */
 function loadPolicy() {
   const raw = fs.readFileSync(POLICY_PATH, 'utf8');
   const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed.rules)) {
-    throw new Error("policy.json is missing a valid 'rules' array");
+  const errors = validatePolicyDocument(parsed);
+  if (errors.length > 0) {
+    throw new Error(`policy.json failed schema validation:\n  - ${errors.join('\n  - ')}`);
   }
   return parsed.rules;
 }

@@ -48,6 +48,7 @@ job_validate_json() {
   set -e
   for f in founder-os/policy.json founder-os/.mcp.json founder-os/hooks/hooks.json \
            founder-os/.claude-plugin/plugin.json founder-os/settings.json \
+           founder-os/schema/policy.schema.json \
            .claude-plugin/marketplace.json; do
     echo "Validating $f"
     node -e "JSON.parse(require('fs').readFileSync('$f'))"
@@ -59,6 +60,8 @@ job_policy_tests() {
   set -e
   cd founder-os
   npm install
+  npm run validate:policy-schema
+  npm run test:schema
   npm run test:claude-code
   npm run test:opencode
   npm run typecheck:opencode

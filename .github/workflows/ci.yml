@@ -26,6 +26,7 @@ jobs:
           set -euo pipefail
           for f in founder-os/policy.json founder-os/.mcp.json founder-os/hooks/hooks.json \
                    founder-os/.claude-plugin/plugin.json founder-os/settings.json \
+                   founder-os/schema/policy.schema.json \
                    .claude-plugin/marketplace.json; do
             echo "Validating $f"
             node -e "JSON.parse(require('fs').readFileSync('$f'))"
@@ -46,6 +47,12 @@ jobs:
       - name: Install dev dependencies
         working-directory: founder-os
         run: npm install
+      - name: Validate policy.json schema
+        working-directory: founder-os
+        run: npm run validate:policy-schema
+      - name: Run schema validation regression tests
+        working-directory: founder-os
+        run: npm run test:schema
       - name: Run Claude Code adapter tests
         working-directory: founder-os
         run: npm run test:claude-code
