@@ -25,6 +25,51 @@ what a command expects) bump the **major** version.
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+## [0.3.2] - 2026-07-03
+
+Second live install/test pass, this time against OpenCode. This file's
+own versioning policy doesn't strictly require a bump here (no hook I/O
+contract or rule schema changed), but the fix is real and user-facing,
+so it gets a version number rather than sitting unstamped.
+
+### Changed
+- Live-confirmed (not just researched) that OpenCode's `"confirm"` and
+  `"block"` rule actions surface identically as a thrown tool error —
+  no middle "ask" state exists, matching what was already documented.
+- Newly documented: founder-os's 3 bundled subagents and 5 commands are
+  completely unreachable under OpenCode currently — no config
+  path-override exists for either (unlike skills), only fixed
+  `.opencode/agent/`/`.opencode/command/` project directories. Tracked
+  as an open gap (`FAILURE-MODES.md` #27), deliberately not built this
+  pass (would need a real install-time step, not just a config
+  template).
+
+### Fixed
+- OpenCode never discovered any of founder-os's 16 skills when only the
+  safety-hook `plugin` entry was configured — its skill loader is
+  entirely separate and only scans `.opencode/skills/` or an explicit
+  `skills.paths` config entry. `templates/opencode.jsonc.tpl` adds the
+  missing `skills.paths` alongside `plugin`, verified live (`opencode
+  debug skill` finds all 16 skills with it set, zero without). Shipped
+  as `.jsonc` specifically because plain `opencode.json` hard-rejects
+  any unrecognized top-level key, including an inline `$comment` field.
+
+## [0.3.1] - 2026-07-03
+
+First live install/test pass: the plugin was loaded into a real Claude
+Code session (`claude --plugin-dir founder-os/`) for the first time,
+rather than only tested against its own matching/adapter logic. Bumps
+patch-adjacent-but-policy-minimum minor per this file's own versioning
+policy (a hook I/O contract changed).
+
+### Added
 - `skills/git-save-points/SKILL.md`: commit in small, atomic "save
   points" during any non-trivial task, so a broken step is one
   `git revert`/`reset` away from a known-good state instead of losing a
@@ -40,20 +85,6 @@ what a command expects) bump the **major** version.
   missing frontmatter, dead config, a masked test-failure bug, and
   fabricated-looking repo statistics — see the PR's closing comment) but
   whose underlying concepts were worth building properly.
-
-### Changed
-
-### Fixed
-
-### Security
-
-## [0.3.1] - 2026-07-03
-
-First live install/test pass: the plugin was loaded into a real Claude
-Code session (`claude --plugin-dir founder-os/`) for the first time,
-rather than only tested against its own matching/adapter logic. Bumps
-patch-adjacent-but-policy-minimum minor per this file's own versioning
-policy (a hook I/O contract changed).
 
 ### Fixed
 - `bin/verify-gate.sh`'s Stop hook emitted `{"decision":"allow"}` on every

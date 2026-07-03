@@ -286,11 +286,31 @@ deliberately-broken test blocked the stop once, the agent investigated
 and correctly declined to force the test green just to pass the gate,
 and the second Stop attempt approved without re-running tests.
 
+## 20. OpenCode never discovered any of founder-os's skills — MEDIUM — FIXED (found via live testing)
+
+**What happened:** wiring up the OpenCode adapter via `opencode.json`'s
+`plugin` array only registers the safety hook (`adapters/opencode/plugin.ts`'s
+`tool.execute.before`). OpenCode's skill loader is entirely separate — it
+only scans `.opencode/skills/` or an explicit `skills.paths` config entry.
+With just `plugin` set, `opencode debug skill` found zero of founder-os's
+16 skills; a founder using OpenCode got the safety net but none of the
+BRIEF/PATH/HIRE/etc. skill library it's actually built around, with no
+error or warning telling them so.
+
+**Fix:** `templates/opencode.jsonc.tpl`, a ready-to-copy config adding
+`skills.paths` pointing at founder-os's `skills/` directory alongside the
+existing `plugin` entry. Verified live: with `skills.paths` set, all 16
+skills appear in `opencode debug skill`. Shipped as `.jsonc` specifically
+because `opencode.json` hard-rejects any unrecognized top-level key
+(including a `$comment` field) — `opencode.jsonc` is OpenCode's own
+supported alternate config filename that tolerates real comments,
+confirmed by testing both forms directly.
+
 ---
 
 ## Accepted risks (not fixed — inherent, disclosed instead)
 
-## 20. Regex-based command interception has a real ceiling — HIGH — ACCEPTED RISK
+## 21. Regex-based command interception has a real ceiling — HIGH — ACCEPTED RISK
 
 **As a determined adversary, not a careless founder:** detection works by
 recognizing patterns in command *text*; it cannot parse shell semantics or
@@ -306,7 +326,7 @@ against `tests/policy-cases.json` — but this is risk reduction, not a
 coverage proof. Disclosed explicitly in `README.md` and every generated
 project's `AGENTS.md`.
 
-## 21. Codex CLI has no code-level enforcement hook — HIGH — ACCEPTED RISK
+## 22. Codex CLI has no code-level enforcement hook — HIGH — ACCEPTED RISK
 
 Codex's protection is `approval_policy`/`sandbox_mode` only — a real,
 human-in-the-loop gate, but it cannot proactively and automatically block
@@ -314,25 +334,27 @@ one specific dangerous command the way Claude Code's PreToolUse hook or
 OpenCode's `tool.execute.before` can. Disclosed in `README.md` and
 `templates/AGENTS.md.tpl`'s per-platform table.
 
-## 22. OpenCode has no "ask for confirmation" state — MEDIUM — ACCEPTED RISK
+## 23. OpenCode has no "ask for confirmation" state — MEDIUM — ACCEPTED RISK
 
 Only allow/block exist on this platform (confirmed directly against
-current docs) — a rule authored as `"action":"confirm"` (meant to pause
-for the founder's confirmation on Claude Code) becomes a hard block on
-OpenCode instead, with no middle option available. Disclosed in
-`README.md` and `templates/AGENTS.md.tpl`.
+current docs, and now live: a real `opencode run` against a `"confirm"`
+rule and a `"block"` rule both surfaced as an identical thrown tool
+error) — a rule authored as `"action":"confirm"` (meant to pause for the
+founder's confirmation on Claude Code) becomes a hard block on OpenCode
+instead, with no middle option available. Disclosed in `README.md` and
+`templates/AGENTS.md.tpl`.
 
-## 23. Secret detection is narrow by design — MEDIUM — ACCEPTED RISK, tracked for expansion
+## 24. Secret detection is narrow by design — MEDIUM — ACCEPTED RISK, tracked for expansion
 
 `policy.json` currently recognizes exactly one pattern: a live Stripe
 secret key (`sk_live_...`). No generic API-key, AWS-key, or JWT pattern
 exists yet — pasting a different provider's live credential into a
-command or file won't be caught by this layer at all. Unlike #20/#21/#22,
+command or file won't be caught by this layer at all. Unlike #21/#22/#23,
 this is a coverage gap that could be closed (more patterns added), not a
 structural platform ceiling — tracked here rather than in `README.md`
 alone so it doesn't get lost.
 
-## 24. A `founder.config.json` `testCommand` runs with no sandboxing — LOW — ACCEPTED RISK
+## 25. A `founder.config.json` `testCommand` runs with no sandboxing — LOW — ACCEPTED RISK
 
 `verify-gate.sh` runs whatever `testCommand` a `founder.config.json`
 declares via `bash -c`, same trust model as the npm-only `npm test` path
@@ -345,7 +367,7 @@ test code by default.
 
 ## Open
 
-## 25. GitHub-hosted Actions runners are non-functional on this repo — MEDIUM — OPEN (external, not in founder-os's control)
+## 26. GitHub-hosted Actions runners are non-functional on this repo — MEDIUM — OPEN (external, not in founder-os's control)
 
 Every workflow run since early in this project's history completes in
 ~4 seconds with job logs 404ing — the runner never actually allocates,
@@ -358,7 +380,28 @@ tracked here so it isn't mistaken for "CI is broken" when the real state
 is "CI's real host is unavailable, and a working substitute is used
 instead."
 
-## 26. `lint-harness.js`'s known-category allow-list is hand-curated, not derived — LOW — OPEN (deliberate trade-off, revisit if it causes friction)
+## 27. founder-os's subagents and commands are completely unreachable under OpenCode — MEDIUM — OPEN
+
+**What was found, live:** unlike skills (fixable — see #20), OpenCode's
+config schema has no path-override for external agent or command
+directories at all. Agents load only from inline `agent: {...}` entries
+in `opencode.json`/`opencode.jsonc` or from a fixed `.opencode/agent/`
+(or `.opencode/agents/`) directory inside the project; commands work the
+same way via `.opencode/command/`. `opencode agent list` shows only
+OpenCode's 6 built-in agents — none of `qa-tester`, `code-critic`, or
+`security-reviewer` — and a real attempt to invoke `build-feature` (one
+of the 5 bundled commands) failed outright with `UnknownError`.
+
+**Why this is OPEN, not an ACCEPTED RISK:** unlike OpenCode's missing
+"ask" state (#23), which is a genuine platform ceiling, this one is
+theoretically closable — founder-os could copy or symlink its agent/
+command files into the founder's `.opencode/agent/` and `.opencode/command/`
+at install time. That's a real installer step (touching the document
+engine, not just a config template), scoped out of this pass
+deliberately rather than built reactively; revisit if OpenCode support
+becomes a priority.
+
+## 28. `lint-harness.js`'s known-category allow-list is hand-curated, not derived — LOW — OPEN (deliberate trade-off, revisit if it causes friction)
 
 The list of valid `policy.json` categories lives as a literal array
 inside `bin/lint-harness.js`, not generated from the schema or current

@@ -1,6 +1,6 @@
 {
   "name": "founder-os",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Dev tooling for the founder-os plugin itself (test runners, CI). Not published; the plugin is distributed via .claude-plugin/plugin.json and the repo-root marketplace.json.",
   "scripts": {

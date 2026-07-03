@@ -50,6 +50,12 @@ in plain terms first, technical detail second.
   anything this project's rules flag gets fully stopped, not just paused for
   confirmation, because the platform doesn't offer a middle option (confirmed
   July 2026).
+- **On OpenCode, the skill library, subagents, and commands need extra
+  setup** — the safety hook works out of the box, but the skills (BRIEF,
+  PATH, HIRE, etc.) only load if `opencode.jsonc` has `skills.paths`
+  configured (see `templates/opencode.jsonc.tpl`), and the bundled
+  subagents/commands currently have no working path on this platform at
+  all (confirmed live, July 2026).
 - **No platform can catch everything.** The way risky commands get detected
   is by recognizing patterns in the text of the command — it cannot truly
   understand intent the way a person can. A sufficiently deliberate attempt
