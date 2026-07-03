@@ -12,6 +12,20 @@
 # re-deriving it here.
 set -euo pipefail
 
+# Fail-safe: an unexpected error anywhere below must never crash this
+# PostToolUse hook or block the agent's turn -- the changelog append is
+# best-effort, not safety-critical, so any genuinely unexpected failure
+# (set -e triggers ERR) just skips the append for this turn, loudly, and
+# exits 0. Every intentional exit path below is the implicit `exit 0` at
+# the end of the script, which does not trigger ERR.
+# shellcheck disable=SC2317
+handle_unexpected_error() {
+  local exit_code=$?
+  echo "doc-sync: unexpected error (exit ${exit_code}) -- skipping changelog auto-append for this turn, not blocking. Investigate this hook script." >&2
+  exit 0
+}
+trap handle_unexpected_error ERR
+
 PAYLOAD="$(cat)"
 COMMAND="$(node -e 'let d="";process.stdin.on("data",c=>d+=c);process.stdin.on("end",()=>{try{const p=JSON.parse(d);process.stdout.write((p.tool_input&&p.tool_input.command)||"")}catch(e){}})' <<<"$PAYLOAD")"
 

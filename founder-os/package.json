@@ -4,10 +4,11 @@
   "private": true,
   "description": "Dev tooling for the founder-os plugin itself (test runners, CI). Not published; the plugin is distributed via .claude-plugin/plugin.json and the repo-root marketplace.json.",
   "scripts": {
-    "test": "npm run test:schema && npm run test:claude-code && npm run test:opencode",
+    "test": "npm run test:schema && npm run test:claude-code && npm run test:opencode && npm run test:hooks",
     "test:schema": "node tests/run-schema-validation-tests.js",
     "test:claude-code": "node tests/run-policy-tests.js",
     "test:opencode": "tsx tests/run-opencode-policy-tests.ts",
+    "test:hooks": "node tests/run-hook-tests.js",
     "typecheck:opencode": "tsc --noEmit --target es2020 --module esnext --moduleResolution bundler adapters/opencode/plugin.ts",
     "validate:policy-schema": "node bin/validate-policy-schema.js"
   },
