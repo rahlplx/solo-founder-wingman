@@ -110,6 +110,14 @@ return shape gained a `ruleId` field (hook I/O contract change) and
   against a known allow-list. None of this was enforced anywhere before —
   a copy-paste mistake (wrong `name:`, a missing section, a typo'd rule
   category) would only ever be caught by a human noticing, if at all.
+- `bin/lint-prd.js`: quality gate for a founder's generated `PRD.md`,
+  run by `/founding-prompt` right after generating it and again by
+  `/map-architecture` before building on top of it. Catches leftover
+  `{{PLACEHOLDER}}` tokens, missing or empty required sections, and a
+  `## Behavior rules` section with no actual WHEN/THEN-formatted rule
+  (vague feature prose instead of exact behavior) — previously nothing
+  stopped a rushed pass through `/founding-prompt` from handing off a
+  PRD too thin to build from.
 
 ### Fixed
 - `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a

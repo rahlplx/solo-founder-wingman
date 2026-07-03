@@ -16,6 +16,7 @@
     "test:audit-log",
     "test:repo-scans",
     "test:lint-harness",
+    "test:lint-prd",
     "test:ci-drift",
     "check:version-sync",
     "typecheck:opencode"

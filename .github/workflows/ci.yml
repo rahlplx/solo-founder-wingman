@@ -96,6 +96,9 @@ jobs:
       - name: Run harness structural health lint tests
         working-directory: founder-os
         run: npm run test:lint-harness
+      - name: Run PRD quality gate tests
+        working-directory: founder-os
+        run: npm run test:lint-prd
       - name: Run CI/local-ci drift check
         working-directory: founder-os
         run: npm run test:ci-drift
