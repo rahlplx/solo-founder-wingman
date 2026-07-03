@@ -54,6 +54,9 @@ jobs:
       - name: Validate policy.json schema
         working-directory: founder-os
         run: npm run validate:policy-schema
+      - name: Run core policy-engine unit tests
+        working-directory: founder-os
+        run: npm run test:core
       - name: Run schema validation regression tests
         working-directory: founder-os
         run: npm run test:schema

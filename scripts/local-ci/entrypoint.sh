@@ -61,6 +61,7 @@ job_policy_tests() {
   cd founder-os
   npm install
   npm run validate:policy-schema
+  npm run test:core
   npm run test:schema
   npm run test:claude-code
   npm run test:opencode

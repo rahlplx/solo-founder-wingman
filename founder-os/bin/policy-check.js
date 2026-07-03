@@ -24,6 +24,7 @@
 const fs = require('fs');
 const path = require('path');
 const { validatePolicyDocument } = require('./validate-policy-schema.js');
+const { compileRules, lowercaseStrings, matchRule, buildReason } = require('../core/policy-engine.js');
 
 const POLICY_PATH = path.join(__dirname, '..', 'policy.json');
 const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
@@ -109,52 +110,15 @@ function extractCheckableStrings(payload) {
 }
 
 /**
- * Compiling a rule's RegExp and lowercasing its keywords is pure work with
- * no side effects beyond the rule itself, so it's cached per rules array
- * (keyed by object identity via WeakMap) instead of redone on every
- * evaluate() call. This matters most for callers that invoke evaluate()
- * many times against the same loaded rule set in one process -- e.g.
- * tests/run-policy-tests.js, which runs ~60 cases per process -- since a
- * single CLI invocation of this script only ever calls evaluate() once
- * regardless.
- *
- * keywords (from policy.json, optional per rule) is a cheap pre-filter:
- * if present, the full regex only runs when at least one keyword is a
- * case-insensitive substring of the string being checked. Every keyword in
- * policy.json is required to be a literal substring guaranteed present in
- * any real match of that rule's pattern (documented in policy.json's
- * _comment) -- so this can only skip unnecessary regex work, never a real
- * match. A rule with no keywords always runs its full regex, unfiltered.
- */
-const _compiledRulesCache = new WeakMap();
-
-function compileRules(rules) {
-  const cached = _compiledRulesCache.get(rules);
-  if (cached) return cached;
-
-  const compiled = [];
-  for (const rule of rules) {
-    let re;
-    try {
-      re = new RegExp(rule.pattern, rule.flags || '');
-    } catch (err) {
-      process.stderr.write(`policy-check: bad pattern in rule ${rule.id}: ${err.message}\n`);
-      continue;
-    }
-    const keywords = Array.isArray(rule.keywords) ? rule.keywords.map((k) => k.toLowerCase()) : null;
-    compiled.push({ ...rule, re, keywords });
-  }
-  _compiledRulesCache.set(rules, compiled);
-  return compiled;
-}
-
-/**
  * Pure evaluation: given a rule list and a hook payload, return the
  * decision without touching stdin/stdout/process.exit. This is what both
  * the CLI entrypoint below and the test runner call.
  *
- * `settings` (optional, defaults to SETTINGS_DEFAULTS via the 3rd param
- * default) applies two tuning knobs from settings.json:
+ * Rule compiling/matching itself is shared with adapters/opencode/plugin.ts
+ * via core/policy-engine.js -- what's left here is Claude Code-specific:
+ * extracting checkable strings from this platform's hook payload shape,
+ * and mapping a matched rule's `action` to this platform's own decision
+ * vocabulary (allow/ask/deny), including settings.json's two tuning knobs:
  * - policyStrictness: "strict" upgrades a would-be "ask" (confirm-action
  *   rule) to "deny" -- for a founder who wants zero interactive
  *   confirmations, only hard stops. "normal" (default) leaves ask/deny
@@ -170,30 +134,15 @@ function evaluate(rules, payload, settings = SETTINGS_DEFAULTS) {
   if (strings.length === 0) return { decision: 'allow', reason: '' };
 
   const compiledRules = compileRules(rules);
-  // Lowercase each string once up front rather than inside the rule loop --
-  // content can be a multi-megabyte file, and there are ~20 rules, so
-  // re-lowercasing per rule was redundant, allocation-heavy work.
-  const checkableStrings = strings.map((s) => ({ ...s, lowerValue: s.value.toLowerCase() }));
+  const checkableStrings = lowercaseStrings(strings);
+  const matched = matchRule(compiledRules, checkableStrings);
+  if (!matched) return { decision: 'allow', reason: '' };
+
   const strict = settings.policyStrictness === 'strict';
-  const explain = settings.explainBeforeAct !== false;
-
-  for (const rule of compiledRules) {
-    const scope = rule.scope || 'any';
-    for (const { value, origin, lowerValue } of checkableStrings) {
-      if (scope !== 'any' && scope !== origin) continue;
-      if (rule.keywords) {
-        if (!rule.keywords.some((k) => lowerValue.includes(k))) continue;
-      }
-      if (rule.re.test(value)) {
-        let decision = rule.action === 'block' ? 'deny' : 'ask';
-        if (strict && decision === 'ask') decision = 'deny';
-        const reason = explain ? `[${rule.id}] ${rule.message}` : `[${rule.id}]`;
-        return { decision, reason };
-      }
-    }
-  }
-
-  return { decision: 'allow', reason: '' };
+  let decision = matched.action === 'block' ? 'deny' : 'ask';
+  if (strict && decision === 'ask') decision = 'deny';
+  const reason = buildReason(matched, settings.explainBeforeAct);
+  return { decision, reason };
 }
 
 function respond(decision, reason) {

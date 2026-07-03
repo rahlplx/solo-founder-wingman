@@ -22,9 +22,10 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-// bin/validate-policy-schema.js is a CommonJS module (module.exports = {...});
-// Node's native ESM loader supports named imports from that shape directly.
+// Both of these are CommonJS modules (module.exports = {...}); Node's
+// native ESM loader supports named imports from that shape directly.
 import { validatePolicyDocument } from "../../bin/validate-policy-schema.js";
+import { compileRules, lowercaseStrings, matchRule, buildReason } from "../../core/policy-engine.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const POLICY_PATH = join(__dirname, "..", "..", "policy.json");
@@ -62,11 +63,6 @@ interface PolicyRule {
   action: "block" | "confirm";
   message: string;
   keywords?: string[];
-}
-
-interface CompiledRule extends PolicyRule {
-  re: RegExp;
-  lowerKeywords: string[] | null;
 }
 
 /**
@@ -135,56 +131,20 @@ interface EvaluationResult {
 }
 
 /**
- * Compiling each rule's RegExp is cached per rules array (keyed by object
- * identity via WeakMap) rather than redone on every evaluate() call. This
- * is a real win here specifically: FounderOsPolicy() below loads rules
- * once at plugin init, and the returned tool.execute.before handler then
- * calls evaluate() on every single tool call for the life of the session --
- * unlike the Claude Code adapter, which is a fresh process per hook
- * invocation. tests/run-opencode-policy-tests.ts also benefits, since it
- * calls evaluate() once per fixture case (~60 times) in one process.
- *
- * keywords (from policy.json, optional per rule) is a cheap pre-filter: if
- * present, the full regex only runs when at least one keyword is a
- * case-insensitive substring of the string being checked. Every keyword in
- * policy.json is required to be a literal substring guaranteed present in
- * any real match of that rule's pattern (documented in policy.json's
- * _comment) -- so this can only skip unnecessary regex work, never a real
- * match. A rule with no keywords always runs its full regex, unfiltered.
- */
-const compiledRulesCache = new WeakMap<PolicyRule[], CompiledRule[]>();
-
-function compileRules(rules: PolicyRule[]): CompiledRule[] {
-  const cached = compiledRulesCache.get(rules);
-  if (cached) return cached;
-
-  const compiled: CompiledRule[] = [];
-  for (const rule of rules) {
-    let re: RegExp;
-    try {
-      re = new RegExp(rule.pattern, rule.flags ?? "");
-    } catch (err) {
-      // Should be unreachable in normal operation -- loadRules() already
-      // rejects non-compiling patterns via validatePolicyDocument() before
-      // compileRules() ever runs. Logged (matching bin/policy-check.js's
-      // equivalent catch, which previously logged this while this one
-      // didn't) as defense-in-depth for any future caller that constructs
-      // a CompiledRule[] without going through loadRules() first.
-      console.error(`[founder-os] bad pattern in rule ${rule.id}:`, err);
-      continue;
-    }
-    const lowerKeywords = rule.keywords ? rule.keywords.map((k) => k.toLowerCase()) : null;
-    compiled.push({ ...rule, re, lowerKeywords });
-  }
-  compiledRulesCache.set(rules, compiled);
-  return compiled;
-}
-
-/**
  * Pure evaluation: given a rule list, a tool name, and its args, return the
  * decision without throwing. This is what both the exported hook below and
- * the test runner call, so there is exactly one implementation of the
- * matching logic, not a copy inside a test file.
+ * the test runner call.
+ *
+ * Rule compiling/matching itself is shared with bin/policy-check.js via
+ * core/policy-engine.js (including the WeakMap compiled-rule cache, keyed
+ * by rules-array identity -- a real win here specifically, since
+ * FounderOsPolicy() below loads rules once at plugin init and the
+ * returned tool.execute.before handler calls evaluate() on every tool
+ * call for the life of the session, unlike the Claude Code adapter, which
+ * is a fresh process per hook invocation). What's left here is OpenCode-
+ * specific: extracting checkable strings from this platform's tool-call
+ * shape, and mapping a matched rule to this platform's own decision
+ * vocabulary (allow/block -- no "ask" state exists here to begin with).
  */
 export function evaluate(
   rules: PolicyRule[],
@@ -196,33 +156,18 @@ export function evaluate(
   if (strings.length === 0) return { decision: "allow", reason: "" };
 
   const compiledRules = compileRules(rules);
-  // Lowercase each string once up front rather than inside the rule loop --
-  // content can be a multi-megabyte file, and there are ~20 rules, so
-  // re-lowercasing per rule was redundant, allocation-heavy work.
-  const checkableStrings = strings.map((s) => ({ ...s, lowerValue: s.value.toLowerCase() }));
+  const checkableStrings = lowercaseStrings(strings);
+  const matched = matchRule(compiledRules, checkableStrings);
+  if (!matched) return { decision: "allow", reason: "" };
+
   // policyStrictness isn't applied here (unlike bin/policy-check.js): "ask"
   // doesn't exist on this platform to begin with (see module comment) --
   // confirm-action rules already resolve to a hard block regardless of
   // strictness, so the setting has nothing left to escalate.
-  const explain = settings.explainBeforeAct !== false;
-
-  for (const rule of compiledRules) {
-    const scope = rule.scope ?? "any";
-    for (const { value, origin, lowerValue } of checkableStrings) {
-      if (scope !== "any" && scope !== origin) continue;
-      if (rule.lowerKeywords) {
-        if (!rule.lowerKeywords.some((k) => lowerValue.includes(k))) continue;
-      }
-      if (rule.re.test(value)) {
-        // OpenCode has no "ask" mode (see module comment) -- both "block"
-        // and "confirm" rule actions resolve to a hard block here.
-        const reason = explain ? `[${rule.id}] ${rule.message}` : `[${rule.id}]`;
-        return { decision: "block", reason };
-      }
-    }
-  }
-
-  return { decision: "allow", reason: "" };
+  const reason = buildReason(matched, settings.explainBeforeAct);
+  // OpenCode has no "ask" mode (see module comment) -- both "block" and
+  // "confirm" rule actions resolve to a hard block here.
+  return { decision: "block", reason };
 }
 
 export { loadRules, extractCheckableStrings, loadSettings };
