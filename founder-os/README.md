@@ -75,11 +75,16 @@ actual evidence instead of the agent's own say-so.
   theoretical evasion ceiling like the regex-interception point above —
   worth knowing if you're integrating a service `policy.json` doesn't
   already have a rule for.
-- **This plugin has not yet been installed and exercised inside a live
-  Claude Code, OpenCode, or Codex session.** Everything has been tested
-  against the actual matching/adapter logic directly (`npm test`) and
-  against live platform documentation where a specific contract could be
-  checked, but end-to-end installation is still unverified.
+- **Live-verified on Claude Code; OpenCode and Codex still untested
+  end-to-end.** Loading the plugin into a real Claude Code session
+  (`claude --plugin-dir founder-os/`) confirmed the PreToolUse hook's
+  three decision states (allow/ask/deny), the Stop hook's
+  approve/block/re-approve sequence including the anti-infinite-loop
+  safeguard, and skill/agent/command discovery — and caught a real bug
+  in the process (the Stop hook was emitting a decision value Claude
+  Code's schema doesn't accept; see `FAILURE-MODES.md` #19). OpenCode and
+  Codex are still only tested against their matching/adapter logic
+  directly (`npm test`), not inside a live session of either.
 
 Every generated project also gets its own copy of the platform-limitations
 table in its `AGENTS.md`, in plain language, not just here.

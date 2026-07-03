@@ -248,11 +248,49 @@ when consolidating results from more than one.
 `FINDINGS`/`RECOMMENDATION`/`CONFIDENCE` block, enforced structurally by
 `bin/lint-harness.js`.
 
+## 19. `verify-gate.sh`'s Stop hook emitted a schema-invalid "allow" decision — HIGH — FIXED (post-3e, found via live testing)
+
+**What happened:** every "allow the stop" path in `verify-gate.sh` emitted
+`{"decision":"allow"}`. Claude Code's actual Stop hook schema only accepts
+`"decision": "approve" | "block"` — `"allow"` isn't a valid value for
+this field at all (that vocabulary — `allow`/`deny`/`ask` — belongs to
+`PreToolUse`'s `hookSpecificOutput.permissionDecision`, a different field
+on a different hook event). This was previously unnoticed because the
+whole test suite validated the hook's own stdout against what the *code*
+expected, not against the real host's schema — the exact risk
+`README.md`'s "not yet installed and exercised inside a live session"
+caveat was flagging, now closed.
+
+**How it was actually found:** loading the plugin into a real, isolated
+Claude Code session via `claude -p --plugin-dir founder-os/` and
+inspecting `--include-hook-events` output directly. Every "allow" path
+produced a live, visible error from Claude Code's own validator:
+
+```
+Hook JSON output validation failed — (root): Invalid input
+The hook's output was: {"decision": "allow"}
+Expected schema: ... "decision": "approve" | "block" (optional) ...
+```
+
+Claude Code fails open on the invalid JSON (the turn still ended), so
+this never actually blocked a founder — but it surfaced a "Stop hook
+error" notification on every single passing turn, exactly the kind of
+visible, trust-eroding noise this safety layer exists to prevent.
+
+**Fix:** all 5 "allow" emissions changed to `{"decision":"approve"}`.
+Re-verified live (no validation error, no notification) on both the
+passing-tests path and, separately, the failing-tests → `block` →
+`stop_hook_active` re-approve sequence, confirming the anti-infinite-loop
+protection (finding-mode #7's cousin) actually works end-to-end: a
+deliberately-broken test blocked the stop once, the agent investigated
+and correctly declined to force the test green just to pass the gate,
+and the second Stop attempt approved without re-running tests.
+
 ---
 
 ## Accepted risks (not fixed — inherent, disclosed instead)
 
-## 19. Regex-based command interception has a real ceiling — HIGH — ACCEPTED RISK
+## 20. Regex-based command interception has a real ceiling — HIGH — ACCEPTED RISK
 
 **As a determined adversary, not a careless founder:** detection works by
 recognizing patterns in command *text*; it cannot parse shell semantics or
@@ -268,7 +306,7 @@ against `tests/policy-cases.json` — but this is risk reduction, not a
 coverage proof. Disclosed explicitly in `README.md` and every generated
 project's `AGENTS.md`.
 
-## 20. Codex CLI has no code-level enforcement hook — HIGH — ACCEPTED RISK
+## 21. Codex CLI has no code-level enforcement hook — HIGH — ACCEPTED RISK
 
 Codex's protection is `approval_policy`/`sandbox_mode` only — a real,
 human-in-the-loop gate, but it cannot proactively and automatically block
@@ -276,7 +314,7 @@ one specific dangerous command the way Claude Code's PreToolUse hook or
 OpenCode's `tool.execute.before` can. Disclosed in `README.md` and
 `templates/AGENTS.md.tpl`'s per-platform table.
 
-## 21. OpenCode has no "ask for confirmation" state — MEDIUM — ACCEPTED RISK
+## 22. OpenCode has no "ask for confirmation" state — MEDIUM — ACCEPTED RISK
 
 Only allow/block exist on this platform (confirmed directly against
 current docs) — a rule authored as `"action":"confirm"` (meant to pause
@@ -284,17 +322,17 @@ for the founder's confirmation on Claude Code) becomes a hard block on
 OpenCode instead, with no middle option available. Disclosed in
 `README.md` and `templates/AGENTS.md.tpl`.
 
-## 22. Secret detection is narrow by design — MEDIUM — ACCEPTED RISK, tracked for expansion
+## 23. Secret detection is narrow by design — MEDIUM — ACCEPTED RISK, tracked for expansion
 
 `policy.json` currently recognizes exactly one pattern: a live Stripe
 secret key (`sk_live_...`). No generic API-key, AWS-key, or JWT pattern
 exists yet — pasting a different provider's live credential into a
-command or file won't be caught by this layer at all. Unlike #19/#20/#21,
+command or file won't be caught by this layer at all. Unlike #20/#21/#22,
 this is a coverage gap that could be closed (more patterns added), not a
 structural platform ceiling — tracked here rather than in `README.md`
 alone so it doesn't get lost.
 
-## 23. A `founder.config.json` `testCommand` runs with no sandboxing — LOW — ACCEPTED RISK
+## 24. A `founder.config.json` `testCommand` runs with no sandboxing — LOW — ACCEPTED RISK
 
 `verify-gate.sh` runs whatever `testCommand` a `founder.config.json`
 declares via `bash -c`, same trust model as the npm-only `npm test` path
@@ -307,7 +345,7 @@ test code by default.
 
 ## Open
 
-## 24. GitHub-hosted Actions runners are non-functional on this repo — MEDIUM — OPEN (external, not in founder-os's control)
+## 25. GitHub-hosted Actions runners are non-functional on this repo — MEDIUM — OPEN (external, not in founder-os's control)
 
 Every workflow run since early in this project's history completes in
 ~4 seconds with job logs 404ing — the runner never actually allocates,
@@ -320,7 +358,7 @@ tracked here so it isn't mistaken for "CI is broken" when the real state
 is "CI's real host is unavailable, and a working substitute is used
 instead."
 
-## 25. `lint-harness.js`'s known-category allow-list is hand-curated, not derived — LOW — OPEN (deliberate trade-off, revisit if it causes friction)
+## 26. `lint-harness.js`'s known-category allow-list is hand-curated, not derived — LOW — OPEN (deliberate trade-off, revisit if it causes friction)
 
 The list of valid `policy.json` categories lives as a literal array
 inside `bin/lint-harness.js`, not generated from the schema or current

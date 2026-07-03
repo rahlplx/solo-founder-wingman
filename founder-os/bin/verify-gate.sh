@@ -4,8 +4,15 @@
 # instead of just a diff. If tests fail, block the stop and hand the
 # failures back so the agent keeps working instead of declaring success.
 #
-# The {"decision":"block","reason":...} JSON contract used below is
-# confirmed current (code.claude.com/docs/en/hooks, checked directly).
+# Stop hook decision contract: top-level `decision` is "approve" | "block"
+# (not "allow"/"deny"/"ask" -- that vocabulary belongs to PreToolUse's
+# hookSpecificOutput.permissionDecision, a different field entirely).
+# Confirmed by live-running this hook inside a real Claude Code session
+# with the plugin loaded via --plugin-dir: `{"decision":"allow"}` failed
+# the harness's own schema validation ("Invalid input... Expected
+# "approve" | "block"") and surfaced a "Stop hook error" notification to
+# the user, even though Claude Code fails open and still ended the turn.
+# `{"decision":"approve"}` is the corrected, schema-valid form.
 set -euo pipefail
 
 # Fail-safe: an unexpected error anywhere below (e.g. `node` missing,
@@ -20,7 +27,7 @@ set -euo pipefail
 handle_unexpected_error() {
   local exit_code=$?
   echo "verify-gate: unexpected error (exit ${exit_code}) -- failing open, allowing the stop. Investigate this hook script." >&2
-  echo '{"decision":"allow"}'
+  echo '{"decision":"approve"}'
   exit 0
 }
 trap handle_unexpected_error ERR
@@ -47,7 +54,7 @@ STOP_HOOK_ACTIVE="$(node -e '
 ' <<<"$PAYLOAD")"
 
 if [[ "$STOP_HOOK_ACTIVE" == "true" ]]; then
-  echo '{"decision":"allow"}'
+  echo '{"decision":"approve"}'
   exit 0
 fi
 
@@ -69,7 +76,7 @@ if [[ -f "$SETTINGS_PATH" ]]; then
 fi
 
 if [[ "$VERIFY_GATE_ON_DONE" != "true" ]]; then
-  echo '{"decision":"allow"}'
+  echo '{"decision":"approve"}'
   exit 0
 fi
 
@@ -117,7 +124,7 @@ fi
 
 if [[ "$HAS_TEST_SCRIPT" != "true" ]]; then
   # No test command configured yet -- nothing to gate on. Allow to stop.
-  echo '{"decision":"allow"}'
+  echo '{"decision":"approve"}'
   exit 0
 fi
 
@@ -131,7 +138,7 @@ else
 fi
 
 if "${RUN_TEST_CMD[@]}" > "$TEST_OUT" 2>&1; then
-  echo '{"decision":"allow"}'
+  echo '{"decision":"approve"}'
   exit 0
 else
   # $'...' (ANSI-C quoting) so \n is an actual newline, not the literal two

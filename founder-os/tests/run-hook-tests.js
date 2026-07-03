@@ -96,7 +96,7 @@ function testVerifyGate() {
   {
     const dir = mkTempRepo();
     const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: true }, { cwd: dir });
-    check('verify-gate: stop_hook_active=true always allows', stdout.trim() === '{"decision":"allow"}' && status === 0, stdout);
+    check('verify-gate: stop_hook_active=true always allows', stdout.trim() === '{"decision":"approve"}' && status === 0, stdout);
   }
 
   // No package.json at all -- nothing to gate on, allow.
@@ -105,7 +105,7 @@ function testVerifyGate() {
     fs.writeFileSync(path.join(dir, 'README.md'), 'hello');
     commitAll(dir, 'init');
     const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
-    check('verify-gate: no package.json allows', stdout.trim() === '{"decision":"allow"}' && status === 0, stdout);
+    check('verify-gate: no package.json allows', stdout.trim() === '{"decision":"approve"}' && status === 0, stdout);
   }
 
   // package.json with no "test" script -- nothing to gate on, allow. Also
@@ -121,7 +121,7 @@ function testVerifyGate() {
     const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
     check(
       'verify-gate: package.json with "test" only in keywords (not scripts.test) allows',
-      stdout.trim() === '{"decision":"allow"}' && status === 0,
+      stdout.trim() === '{"decision":"approve"}' && status === 0,
       stdout
     );
   }
@@ -132,7 +132,7 @@ function testVerifyGate() {
     fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', scripts: { test: 'exit 0' } }));
     commitAll(dir, 'init');
     const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
-    check('verify-gate: passing test script allows', stdout.trim() === '{"decision":"allow"}' && status === 0, stdout);
+    check('verify-gate: passing test script allows', stdout.trim() === '{"decision":"approve"}' && status === 0, stdout);
   }
 
   // package.json with a failing test script -- block, reason includes output.
@@ -174,7 +174,7 @@ function testVerifyGate() {
     );
     check(
       'verify-gate: fails open with valid JSON when node is unavailable',
-      stdout.trim() === '{"decision":"allow"}' && status === 0 && stderr.includes('unexpected error'),
+      stdout.trim() === '{"decision":"approve"}' && status === 0 && stderr.includes('unexpected error'),
       `stdout=${JSON.stringify(stdout)} stderr=${JSON.stringify(stderr)} status=${status}`
     );
   }
@@ -190,7 +190,7 @@ function testVerifyGate() {
     const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
     check(
       'verify-gate: founder.config.json testCommand (passing, no package.json) allows',
-      stdout.trim() === '{"decision":"allow"}' && status === 0,
+      stdout.trim() === '{"decision":"approve"}' && status === 0,
       stdout
     );
   }
@@ -251,7 +251,7 @@ function testVerifyGate() {
     const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
     check(
       'verify-gate: settings.json verifyGateOnDone=false allows even with a failing test script',
-      stdout.trim() === '{"decision":"allow"}' && status === 0,
+      stdout.trim() === '{"decision":"approve"}' && status === 0,
       stdout
     );
   });

@@ -47,6 +47,26 @@ what a command expects) bump the **major** version.
 
 ### Security
 
+## [0.3.1] - 2026-07-03
+
+First live install/test pass: the plugin was loaded into a real Claude
+Code session (`claude --plugin-dir founder-os/`) for the first time,
+rather than only tested against its own matching/adapter logic. Bumps
+patch-adjacent-but-policy-minimum minor per this file's own versioning
+policy (a hook I/O contract changed).
+
+### Fixed
+- `bin/verify-gate.sh`'s Stop hook emitted `{"decision":"allow"}` on every
+  passing turn, but Claude Code's real Stop hook schema only accepts
+  `"decision": "approve" | "block"` — `"allow"` isn't a valid value for
+  this field (that vocabulary belongs to a different hook event's
+  `hookSpecificOutput.permissionDecision`). Claude Code failed open on
+  the invalid JSON, so a founder was never actually blocked by this, but
+  it surfaced a "Stop hook error" notification on every single passing
+  turn. Found via live testing (see `FAILURE-MODES.md` #19); all 5
+  "allow" emissions changed to `{"decision":"approve"}`, re-verified live
+  with no validation error.
+
 ## [0.3.0] - 2026-07-03
 
 Enterprise-hardening pass, informed by a maturity audit of this codebase
