@@ -326,13 +326,54 @@ against `tests/policy-cases.json` — but this is risk reduction, not a
 coverage proof. Disclosed explicitly in `README.md` and every generated
 project's `AGENTS.md`.
 
-## 22. Codex CLI has no code-level enforcement hook — HIGH — ACCEPTED RISK
+## 22. Codex CLI has no code-level enforcement hook *that founder-os uses* — HIGH — OPEN (was ACCEPTED RISK; downgraded from a settled platform ceiling after live testing found a real mechanism founder-os doesn't use yet)
 
-Codex's protection is `approval_policy`/`sandbox_mode` only — a real,
-human-in-the-loop gate, but it cannot proactively and automatically block
-one specific dangerous command the way Claude Code's PreToolUse hook or
-OpenCode's `tool.execute.before` can. Disclosed in `README.md` and
-`templates/AGENTS.md.tpl`'s per-platform table.
+**Original claim (still true for what founder-os ships today):** Codex's
+protection via `config.toml.snippet` is `approval_policy`/`sandbox_mode`
+only — a real, human-in-the-loop gate, but it cannot proactively and
+automatically block one specific dangerous command the way Claude Code's
+PreToolUse hook or OpenCode's `tool.execute.before` can.
+
+**What live testing found, July 2026, that changes the picture:** Codex
+CLI's own `codex features list` shows a `hooks` feature flag that is
+`stable` and enabled (`true`) by default, distinct from an older `removed`
+`plugin_hooks` flag. Binary string inspection of the installed Codex CLI
+(`strings` against the vendored binary — there's no public schema doc or
+`codex hooks` subcommand to read this from directly) surfaces a wire
+vocabulary that closely mirrors Claude Code's own hook contract:
+`PreToolUseHookSpecificOutputWire`, `PostToolUseHookSpecificOutputWire`,
+`SessionStartHookSpecificOutputWire`, `SubagentStartHookSpecificOutputWire`,
+`UserPromptSubmitHookSpecificOutputWire`, `PermissionRequestHookSpecificOutputWire`,
+a `hook_event_name`/`stop_hook_active` pair identical in name to Claude
+Code's, a `"hooks": "./hooks.json"` config reference (same filename
+convention as Claude Code), user-facing strings like `Tool call blocked by
+PreToolUse hook:` and `hooks need review before they can run` (a trust/
+review workflow, echoed by the `--dangerously-bypass-hook-trust` CLI flag),
+and a string fragment suggesting Codex can import project setup from
+Claude Code. `codex plugin marketplace add` accepts a local or Git
+marketplace source (not just a hosted one), meaning a locally-authored
+plugin with its own `hooks.json` is plausibly installable without
+publishing anywhere.
+
+**Why this is OPEN, not fixed and not left as the old ACCEPTED RISK:**
+none of this could be verified end-to-end in this environment. There's no
+`codex hooks` subcommand, no published schema, and no OpenAI credentials
+available here (checked: no `OPENAI_API_KEY`/`CODEX_*` env vars, no
+working `codex login` path against the proxy-injected credentials used
+elsewhere in this environment) to actually author a `hooks.json`, install
+it as a local plugin, and confirm it really intercepts a tool call the way
+`--strict-config` fuzzing of guessed `hooks.*` TOML shapes couldn't
+confirm either (both a guessed `hooks.pre_tool_use=[]` and a guessed
+`hooks.on_command=[]` shape were silently accepted with no schema-rejection
+signal either way). Building a real Codex plugin-based hook adapter is a
+new-adapter-shaped effort (its own marketplace.json, hooks.json, trust
+flow), not a quick config fix — this needs a deliberate scope decision, not
+a unilateral rewrite of `config.toml.snippet`'s core claim based on string
+evidence alone. `config.toml.snippet`, `README.md`, and
+`templates/AGENTS.md.tpl`'s per-platform table still describe today's
+shipped behavior (sandbox/approval-only) accurately; this entry exists so
+that behavior isn't mistaken for a permanent platform ceiling the next time
+someone looks at Codex.
 
 ## 23. OpenCode has no "ask for confirmation" state — MEDIUM — ACCEPTED RISK
 
@@ -412,3 +453,30 @@ will (correctly, but confusingly) flag every rule in it. If this causes
 real friction, the fix is a documented category registry (e.g. a
 `categories` array in `policy.schema.json`) rather than a literal in the
 linter — not done yet since it hasn't caused a problem in practice.
+
+## 29. `config.toml.snippet` claimed a project-scoped `.codex/config.toml` works — it doesn't — MEDIUM — FIXED (found via live testing)
+
+**What was found, live:** `config.toml.snippet`'s own header comment said
+"merge this into `~/.codex/config.toml` or a project-scoped
+`.codex/config.toml`." That second option is false. Verified directly:
+with a real `/tmp` project containing `.codex/config.toml`, setting
+`model` to a distinguishing non-default value, then separately setting
+`approval_policy`/`sandbox_mode` to values clearly different from Codex's
+real defaults, `codex doctor --json`'s `config.load` and `sandbox.helpers`
+checks never reflected any of it — `model` always reported `<default>`,
+`approval policy` always reported `OnRequest` (Codex's actual default)
+regardless of what the project file said. Codex CLI only reads
+`$CODEX_HOME/config.toml` (default `~/.codex/config.toml`) plus named
+global profiles (`$CODEX_HOME/<name>.config.toml`, selected via
+`-p`/`--profile`) and CLI `-c` overrides — there is no per-project config
+file mechanism analogous to Claude Code's `.claude/settings.json` or
+OpenCode's `opencode.json`.
+
+**Fix:** `config.toml.snippet`'s header comment corrected to state
+global-only config and point founders at named profiles or `-c` overrides
+for per-project differences instead of a nonexistent project file.
+
+**Root cause:** the original claim was written by inference from other
+platforms' conventions (Claude Code and OpenCode both support project-
+scoped config), not verified against Codex directly — exactly the kind of
+assumption this live-testing pass exists to catch.

@@ -68,7 +68,7 @@ in plain terms first, technical detail second.
 |---|---|---|
 | Claude Code | Enforced by code (PreToolUse hook), supports hard-block or ask-to-confirm | `hooks/hooks.json` intercepts before the tool call runs |
 | OpenCode | Enforced by code (`tool.execute.before`); no distinct "ask" mode exists on this platform (confirmed), so confirm-level rules also hard-block | `plugin.ts` intercepts before the tool call runs |
-| Codex CLI | Enforced by sandbox policy only, no code hook exists | `config.toml` `approval_policy=on-request` + `sandbox_mode=workspace-write` — requires you to actually approve each risky action, don't set `approval_policy=never` |
+| Codex CLI | Enforced by sandbox policy only; a separate Codex `hooks` feature exists but founder-os doesn't build against it yet (unverified, see `FAILURE-MODES.md` #22) | `config.toml` `approval_policy=on-request` + `sandbox_mode=workspace-write` — requires you to actually approve each risky action, don't set `approval_policy=never`. Set this in `~/.codex/config.toml` only — Codex does not read a project-scoped `.codex/config.toml` |
 
 LSP-based background diagnostics (a cheap pre-check before the verify gate)
 only run on Claude Code — OpenCode and Codex rely more heavily on the

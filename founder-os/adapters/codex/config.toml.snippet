@@ -1,14 +1,30 @@
 # founder-os recommended Codex CLI configuration.
 #
-# Codex has no code-level hook mechanism (unlike Claude Code's hooks.json or
-# OpenCode's tool.execute.before) -- this is policy/sandbox-level protection
-# only, per OpenAI's own documented guidance. It's a real, human-in-the-loop
-# gate (nothing runs outside the sandbox without your approval), just a
-# weaker guarantee than code-level interception. This gap is documented for
-# the founder in the generated AGENTS.md "Known Limitations by Platform"
-# section -- it is not hidden.
+# founder-os's own PreToolUse-style interception (like Claude Code's
+# hooks.json or OpenCode's tool.execute.before) is NOT wired up for Codex --
+# this file only gives you policy/sandbox-level protection, per OpenAI's own
+# documented guidance. It's a real, human-in-the-loop gate (nothing runs
+# outside the sandbox without your approval), just a weaker guarantee than
+# code-level interception. This gap is documented for the founder in the
+# generated AGENTS.md "Known Limitations by Platform" section -- it is not
+# hidden. (Codex CLI does expose its own separate `hooks` feature --
+# `codex features list` shows it stable/enabled, and its wire vocabulary
+# -- PreToolUse/PostToolUse/SessionStart/SubagentStart/UserPromptSubmit,
+# hooks.json -- closely mirrors Claude Code's. founder-os doesn't use it yet:
+# it's only installable through Codex's plugin/marketplace system, not a
+# plain config file, and verifying it actually intercepts a tool call
+# requires a real authenticated session this environment doesn't have. See
+# FAILURE-MODES.md for the full evidence trail and open status.)
 #
-# Merge this into ~/.codex/config.toml or a project-scoped .codex/config.toml.
+# Merge this into ~/.codex/config.toml. Codex CLI does NOT read a
+# project-scoped .codex/config.toml -- verified directly via `codex doctor
+# --json`: distinguishing values set in a project's .codex/config.toml
+# (model, approval_policy, sandbox_mode) had zero effect on what `codex
+# doctor` reported, which only ever reflected $CODEX_HOME/config.toml
+# (default ~/.codex/config.toml) or a named global profile
+# ($CODEX_HOME/<name>.config.toml via -p/--profile). If you need
+# per-project values, use a named profile and pass -p/--profile per project,
+# or a CLI -c override -- there is no per-project config file today.
 
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
