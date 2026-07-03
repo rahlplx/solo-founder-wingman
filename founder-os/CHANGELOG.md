@@ -118,6 +118,14 @@ return shape gained a `ruleId` field (hook I/O contract change) and
   (vague feature prose instead of exact behavior) — previously nothing
   stopped a rushed pass through `/founding-prompt` from handing off a
   PRD too thin to build from.
+- Standardized output contract for the 3 bundled subagents (`qa-tester`,
+  `code-critic`, `security-reviewer`): every report now leads with a
+  `VERDICT`/`FINDINGS`/`RECOMMENDATION`/`CONFIDENCE` block, in that exact
+  shape, before the agent's own domain-specific detail (PATH dimensions,
+  Red/Yellow/Green categories, LOCK items). Lets `/multi-model-review` and
+  other skills that invoke multiple subagents parse a consistent result
+  without re-reading the whole report. `bin/lint-harness.js` now enforces
+  the presence of all 4 fields on every agent file.
 
 ### Fixed
 - `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a

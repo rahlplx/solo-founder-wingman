@@ -106,6 +106,9 @@ function lintAgents() {
     );
     check(`agents/${file}: has a "## Report format" section`, hasSection(content, 'Report format'));
     check(`agents/${file}: has a "## What NOT to do" section`, hasSection(content, 'What NOT to do'));
+    for (const field of ['VERDICT:', 'FINDINGS:', 'RECOMMENDATION:', 'CONFIDENCE:']) {
+      check(`agents/${file}: standardized output contract includes ${field}`, content.includes(field));
+    }
   }
 }
 
