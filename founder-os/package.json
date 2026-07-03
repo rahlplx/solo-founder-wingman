@@ -4,10 +4,11 @@
   "private": true,
   "description": "Dev tooling for the founder-os plugin itself (test runners, CI). Not published; the plugin is distributed via .claude-plugin/plugin.json and the repo-root marketplace.json.",
   "scripts": {
-    "test": "npm run test:core && npm run test:schema && npm run test:claude-code && npm run test:opencode && npm run test:hooks && npm run test:settings && npm run test:redos-guard && npm run test:audit-log && npm run test:repo-scans && npm run test:ci-drift && npm run check:version-sync",
+    "test": "npm run test:core && npm run test:schema && npm run test:claude-code && npm run test:opencode && npm run test:hooks && npm run test:settings && npm run test:redos-guard && npm run test:audit-log && npm run test:repo-scans && npm run test:lint-harness && npm run test:ci-drift && npm run check:version-sync",
     "test:core": "node tests/run-core-engine-tests.js",
     "test:audit-log": "tsx tests/run-audit-log-tests.js",
     "test:repo-scans": "node tests/run-repo-scan-tests.js",
+    "test:lint-harness": "node tests/run-lint-harness-tests.js",
     "test:schema": "node tests/run-schema-validation-tests.js",
     "test:claude-code": "node tests/run-policy-tests.js",
     "test:opencode": "tsx tests/run-opencode-policy-tests.ts",
@@ -20,7 +21,8 @@
     "check:version-sync": "node bin/check-version-sync.js",
     "check:js-syntax": "node bin/check-js-syntax.js",
     "scan:secrets": "node bin/scan-secrets.js",
-    "audit:deps": "npm audit"
+    "audit:deps": "npm audit",
+    "lint:harness": "node bin/lint-harness.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

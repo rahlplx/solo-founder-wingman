@@ -101,6 +101,15 @@ return shape gained a `ruleId` field (hook I/O contract change) and
   package.json `scripts.test` detection otherwise — previously the Stop
   hook's verify gate only understood npm projects and silently no-op'd
   (allowed the stop with no test run) for anything else.
+- `bin/lint-harness.js`: structural health check for the harness itself —
+  every skill's `SKILL.md` frontmatter (`name` matching its directory,
+  non-empty `description`, an H1 title, a `## What to do` section), every
+  agent's frontmatter (`name` matching its filename, `description`,
+  `tools`) and required `## Report format` / `## What NOT to do` sections,
+  every command's frontmatter, and every `policy.json` rule's `category`
+  against a known allow-list. None of this was enforced anywhere before —
+  a copy-paste mistake (wrong `name:`, a missing section, a typo'd rule
+  category) would only ever be caught by a human noticing, if at all.
 
 ### Fixed
 - `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a

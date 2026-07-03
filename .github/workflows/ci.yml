@@ -63,6 +63,9 @@ jobs:
       - name: Audit dependencies for known vulnerabilities
         working-directory: founder-os
         run: npm run audit:deps
+      - name: Lint harness structural health (skills/agents/commands/policy.json)
+        working-directory: founder-os
+        run: npm run lint:harness
       - name: Run core policy-engine unit tests
         working-directory: founder-os
         run: npm run test:core
@@ -90,6 +93,9 @@ jobs:
       - name: Run repo scan tests (check-js-syntax.js, scan-secrets.js)
         working-directory: founder-os
         run: npm run test:repo-scans
+      - name: Run harness structural health lint tests
+        working-directory: founder-os
+        run: npm run test:lint-harness
       - name: Run CI/local-ci drift check
         working-directory: founder-os
         run: npm run test:ci-drift

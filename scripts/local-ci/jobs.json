@@ -5,6 +5,7 @@
     "check:js-syntax",
     "scan:secrets",
     "audit:deps",
+    "lint:harness",
     "test:core",
     "test:schema",
     "test:claude-code",
@@ -14,6 +15,7 @@
     "test:redos-guard",
     "test:audit-log",
     "test:repo-scans",
+    "test:lint-harness",
     "test:ci-drift",
     "check:version-sync",
     "typecheck:opencode"
