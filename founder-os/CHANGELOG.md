@@ -68,7 +68,6 @@ policy (a hook I/O contract changed).
   with no validation error.
 
 ## [0.3.0] - 2026-07-03
-
 Enterprise-hardening pass, informed by a maturity audit of this codebase
 plus a pattern-extraction pass over an unrelated repo (`ll-vibekit`).
 Bumps at least minor per this file's own versioning policy: `evaluate()`'s
