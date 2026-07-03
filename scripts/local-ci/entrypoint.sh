@@ -58,19 +58,21 @@ job_validate_json() {
 # shellcheck disable=SC2317
 job_policy_tests() {
   set -e
-  cd founder-os
-  npm install
-  npm run validate:policy-schema
-  npm run test:core
-  npm run test:schema
-  npm run test:claude-code
-  npm run test:opencode
-  npm run test:hooks
-  npm run test:settings
-  npm run test:redos-guard
-  npm run test:audit-log
-  npm run check:version-sync
-  npm run typecheck:opencode
+  npm install --prefix founder-os
+  # Reads the same scripts/local-ci/jobs.json used by
+  # tests/run-ci-drift-tests.js to assert .github/workflows/ci.yml's steps
+  # stay in sync with this list -- previously these were hand-duplicated
+  # in both places with nothing keeping them from drifting apart.
+  local scripts
+  scripts="$(node -e '
+    const jobs = require("./scripts/local-ci/jobs.json");
+    process.stdout.write(jobs.policyTestsScripts.join("\n"));
+  ')"
+  while IFS= read -r script; do
+    [ -z "$script" ] && continue
+    echo "--- npm run $script ---"
+    npm run --prefix founder-os "$script"
+  done <<<"$scripts"
 }
 
 # shellcheck disable=SC2317
