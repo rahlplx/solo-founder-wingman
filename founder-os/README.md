@@ -83,6 +83,11 @@ actual evidence instead of the agent's own say-so.
 Every generated project also gets its own copy of the platform-limitations
 table in its `AGENTS.md`, in plain language, not just here.
 
+See [FAILURE-MODES.md](./FAILURE-MODES.md) for the full, living catalog
+this list is drawn from — every gap found so far in this codebase, tagged
+by severity and whether it's fixed, an accepted platform limitation, or
+still open.
+
 ## Installing
 
 Via a marketplace (recommended once published): add this repo as a

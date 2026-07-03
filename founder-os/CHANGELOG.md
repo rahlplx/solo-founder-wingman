@@ -126,6 +126,13 @@ return shape gained a `ruleId` field (hook I/O contract change) and
   other skills that invoke multiple subagents parse a consistent result
   without re-reading the whole report. `bin/lint-harness.js` now enforces
   the presence of all 4 fields on every agent file.
+- `founder-os/FAILURE-MODES.md`: a living, adversarial catalog of every
+  gap found in this codebase's two audits (this file's own history and
+  the original ll-vibekit-comparison pass), tagged by severity and
+  whether it's fixed (linked to the PR that closed it), an accepted
+  platform limitation, or still open. Doubles as a QA artifact and this
+  project's own before/after record; `README.md`'s "Known limitations"
+  section now links to it.
 
 ### Fixed
 - `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a
