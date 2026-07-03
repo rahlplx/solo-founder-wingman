@@ -61,7 +61,16 @@ let this collapse into a five-minute exercise.
    to asking the founder. If `founder.config.json` already exists, leave it
    alone rather than overwriting founder-made edits.
 
-6. **Read back a one-paragraph summary** of what you generated in plain
+6. **Run the PRD quality gate** — `node <founder-os-plugin-dir>/bin/lint-prd.js <project>/PRD.md`
+   — before presenting anything to the founder. This catches the two most
+   common ways a rushed pass through this skill leaves `PRD.md` too thin
+   to build from: a leftover `{{PLACEHOLDER}}` token that never got filled
+   in, and Behavior rules left as vague feature prose instead of an actual
+   WHEN/THEN statement. If it fails, go back and fill the specific gaps it
+   names — don't hand a failing PRD off to the founder or to
+   `/map-architecture`.
+
+7. **Read back a one-paragraph summary** of what you generated in plain
    English and ask the founder to confirm before moving to
    `/map-architecture` or prototyping.
 

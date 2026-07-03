@@ -17,9 +17,14 @@ invocation can read, instead of tribal knowledge in your head.
    (the messenger between rooms), Integrations (plug-ins) — ask what's
    needed for each, in plain terms, one block at a time.
 
-2. **Read PRD.md first.** The map must match already-committed core
-   features and the non-goals list — it doesn't get to invent new scope
-   mid-mapping.
+2. **Read PRD.md first, and re-run its quality gate**
+   (`node <founder-os-plugin-dir>/bin/lint-prd.js <project>/PRD.md`) before
+   mapping anything — `/founding-prompt` runs this once at generation time,
+   but `PRD.md` may have been hand-edited since. Don't map architecture on
+   top of a PRD with unfilled placeholders or vague, non-WHEN/THEN behavior
+   rules; send the founder back to fix the specific gaps it names first.
+   The map must match already-committed core features and the non-goals
+   list — it doesn't get to invent new scope mid-mapping.
 
 3. **Draft the product map and read it back for confirmation** before
    writing anything, using the LEGO shape: Pages / Data / Connections /
