@@ -27,8 +27,10 @@ actual evidence instead of the agent's own say-so.
 - A safety/policy layer that intercepts destructive, secret-leaking, or
   cost-risky agent actions before they run, on platforms that support it.
 - A document engine that generates and maintains `PRD.md`, `AGENTS.md`,
-  `llms.txt`, `README.md`, `CHANGELOG.md`, and `.gitignore` for the
-  founder's *own* project (not this repo).
+  `llms.txt`, `README.md`, `CHANGELOG.md`, `.gitignore`, and
+  `founder.config.json` (the project's real test/build commands, so the
+  Stop-hook verify gate works for non-npm projects too) for the founder's
+  *own* project (not this repo).
 - MCP server wiring for common integrations (Supabase, Stripe, Vercel,
   Sentry, PostHog, Playwright, GitHub, Context7) with safety notes per
   service.

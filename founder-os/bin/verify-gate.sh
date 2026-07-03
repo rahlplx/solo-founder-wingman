@@ -75,21 +75,44 @@ fi
 
 cd "$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 
-# Check specifically for scripts.test, not just the substring "test" anywhere
-# in package.json (a bare `grep -q '"test"'` would false-positive on e.g. a
-# "keywords": ["test"] field with no actual test script, causing `npm test`
-# to fail with "Missing script" and the founder seeing a misleading
-# "tests are failing" block).
-HAS_TEST_SCRIPT="false"
-if [[ -f package.json ]]; then
-  HAS_TEST_SCRIPT="$(node -e '
+# founder.config.json (templates/founder.config.json.tpl, scaffolded by
+# /founding-prompt) is this project's single source of truth for its real
+# test command -- read it if present, so this gate isn't npm-only. Falls
+# back to the original package.json scripts.test detection below when
+# there's no config file or no testCommand field in it, so a project that
+# predates this config file keeps working exactly as before.
+CONFIG_PATH="founder.config.json"
+TEST_CMD=""
+if [[ -f "$CONFIG_PATH" ]]; then
+  TEST_CMD="$(node -e '
     try {
-      const pkg = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
-      process.stdout.write(pkg.scripts && pkg.scripts.test ? "true" : "false");
+      const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+      process.stdout.write(typeof c.testCommand === "string" ? c.testCommand : "");
     } catch (e) {
-      process.stdout.write("false");
+      process.stdout.write("");
     }
-  ')"
+  ' "$CONFIG_PATH")"
+fi
+
+if [[ -n "$TEST_CMD" ]]; then
+  HAS_TEST_SCRIPT="true"
+else
+  # Check specifically for scripts.test, not just the substring "test"
+  # anywhere in package.json (a bare `grep -q '"test"'` would false-positive
+  # on e.g. a "keywords": ["test"] field with no actual test script, causing
+  # `npm test` to fail with "Missing script" and the founder seeing a
+  # misleading "tests are failing" block).
+  HAS_TEST_SCRIPT="false"
+  if [[ -f package.json ]]; then
+    HAS_TEST_SCRIPT="$(node -e '
+      try {
+        const pkg = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
+        process.stdout.write(pkg.scripts && pkg.scripts.test ? "true" : "false");
+      } catch (e) {
+        process.stdout.write("false");
+      }
+    ')"
+  fi
 fi
 
 if [[ "$HAS_TEST_SCRIPT" != "true" ]]; then
@@ -101,7 +124,13 @@ fi
 TEST_OUT="$(mktemp)"
 trap 'rm -f "$TEST_OUT"' EXIT
 
-if npm test --silent > "$TEST_OUT" 2>&1; then
+if [[ -n "$TEST_CMD" ]]; then
+  RUN_TEST_CMD=(bash -c "$TEST_CMD")
+else
+  RUN_TEST_CMD=(npm test --silent)
+fi
+
+if "${RUN_TEST_CMD[@]}" > "$TEST_OUT" 2>&1; then
   echo '{"decision":"allow"}'
   exit 0
 else

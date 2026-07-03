@@ -94,6 +94,13 @@ return shape gained a `ruleId` field (hook I/O contract change) and
   with nothing catching drift between the two.
   `tests/run-ci-drift-tests.js` asserts `ci.yml`'s steps still match
   `jobs.json` exactly, in order.
+- `templates/founder.config.json.tpl`, scaffolded into a founder's own
+  project by `/founding-prompt` — a single source of truth for that
+  project's real test/build commands. `bin/verify-gate.sh` now reads
+  `testCommand` from it when present, falling back to the original
+  package.json `scripts.test` detection otherwise — previously the Stop
+  hook's verify gate only understood npm projects and silently no-op'd
+  (allowed the stop with no test run) for anything else.
 
 ### Fixed
 - `adapters/opencode/plugin.ts`'s `compileRules` silently swallowed a

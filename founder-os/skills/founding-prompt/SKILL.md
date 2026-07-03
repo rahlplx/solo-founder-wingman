@@ -51,6 +51,16 @@ let this collapse into a five-minute exercise.
    already exists — so `.env` is actually kept out of git even in a project
    that already had a `.gitignore` before this skill ran.
 
+   Also generate `founder.config.json` from `templates/founder.config.json.tpl`
+   at the project root — this is what lets `bin/verify-gate.sh`'s Stop-hook
+   test gate work for non-npm projects instead of silently no-op'ing. Set
+   `testCommand`/`buildCommand` to whatever this project's stack actually
+   uses (e.g. `pytest`, `go test ./...`, `cargo test`), not the template's
+   npm-shaped default — check for an existing `package.json`, `pyproject.toml`,
+   `go.mod`, `Cargo.toml`, etc. to infer the real command before falling back
+   to asking the founder. If `founder.config.json` already exists, leave it
+   alone rather than overwriting founder-made edits.
+
 6. **Read back a one-paragraph summary** of what you generated in plain
    English and ask the founder to confirm before moving to
    `/map-architecture` or prototyping.

@@ -179,6 +179,69 @@ function testVerifyGate() {
     );
   }
 
+  // founder.config.json's testCommand is used in place of `npm test` when
+  // present -- lets non-npm projects (Python, Go, Rust, ...) get a working
+  // verify gate instead of a silent allow-everything no-op. No package.json
+  // at all here, proving the config-driven path doesn't depend on npm.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'founder.config.json'), JSON.stringify({ testCommand: 'exit 0' }));
+    commitAll(dir, 'init');
+    const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
+    check(
+      'verify-gate: founder.config.json testCommand (passing, no package.json) allows',
+      stdout.trim() === '{"decision":"allow"}' && status === 0,
+      stdout
+    );
+  }
+
+  // founder.config.json's testCommand failing -- blocks with its real output,
+  // same contract as the package.json scripts.test path.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(
+      path.join(dir, 'founder.config.json'),
+      JSON.stringify({ testCommand: 'echo CONFIG_DRIVEN_FAILURE_MARKER && exit 1' })
+    );
+    commitAll(dir, 'init');
+    const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = null;
+    }
+    check(
+      'verify-gate: founder.config.json testCommand (failing) blocks with its real output in the reason',
+      status === 0 && parsed && parsed.decision === 'block' && parsed.reason.includes('CONFIG_DRIVEN_FAILURE_MARKER'),
+      stdout
+    );
+  }
+
+  // founder.config.json present but with no testCommand field -- falls back
+  // to the package.json scripts.test detection, not a crash or a silent skip.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'founder.config.json'), JSON.stringify({ buildCommand: 'echo build' }));
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'x', scripts: { test: 'echo FALLBACK_MARKER && exit 1' } })
+    );
+    commitAll(dir, 'init');
+    const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = null;
+    }
+    check(
+      'verify-gate: founder.config.json without testCommand falls back to package.json scripts.test',
+      status === 0 && parsed && parsed.decision === 'block' && parsed.reason.includes('FALLBACK_MARKER'),
+      stdout
+    );
+  }
+
   // settings.json's verifyGateOnDone=false allows even with a failing test
   // script -- previously dead config, now actually wired up.
   withSettingsOverride({ verifyGateOnDone: false }, () => {
