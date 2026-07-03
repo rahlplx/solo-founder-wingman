@@ -25,6 +25,21 @@ what a command expects) bump the **major** version.
 ## [Unreleased]
 
 ### Added
+- `skills/git-save-points/SKILL.md`: commit in small, atomic "save
+  points" during any non-trivial task, so a broken step is one
+  `git revert`/`reset` away from a known-good state instead of losing a
+  whole session's progress. Formalizes a rule that was previously only a
+  single buried line in `commands/refactor-cleanup.md`.
+- `skills/handoff/SKILL.md`: a structured handoff summary before a
+  session ends with unfinished work, right before `/compact`/`/clear`, or
+  when `/hire-agent` hands a task to a different role — captures
+  in-progress state, what's actually been verified vs. not, and the
+  specific next step, so it isn't silently re-derived or dropped at a
+  session boundary. Both ideas originated from an external, unreviewed
+  PR (#12) whose implementation was rejected wholesale (stale base,
+  missing frontmatter, dead config, a masked test-failure bug, and
+  fabricated-looking repo statistics — see the PR's closing comment) but
+  whose underlying concepts were worth building properly.
 
 ### Changed
 
