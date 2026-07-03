@@ -60,10 +60,17 @@ actual evidence instead of the agent's own say-so.
   coverage. This was independently identified by four external audits of
   this codebase; see `CHANGELOG.md` for what was fixed and what's
   structural.
-- **Codex CLI has no code-level enforcement hook at all.** Its protection
-  is `approval_policy`/`sandbox_mode` defaults only — a real,
-  human-in-the-loop gate, but weaker than Claude Code/OpenCode's ability to
-  automatically block a specific command.
+- **Codex CLI has no code-level enforcement hook that founder-os uses
+  today.** Its protection is `approval_policy`/`sandbox_mode` defaults
+  only — a real, human-in-the-loop gate, but weaker than Claude Code/
+  OpenCode's ability to automatically block a specific command. Codex CLI
+  does expose its own separate `hooks` feature (confirmed stable/enabled
+  via `codex features list`, with a wire vocabulary that closely mirrors
+  Claude Code's own hook contract), but founder-os doesn't build against
+  it yet — it's only installable through Codex's plugin/marketplace
+  system, not a plain config file, and verifying it actually intercepts a
+  tool call requires a real authenticated session that wasn't available
+  to test against. See `FAILURE-MODES.md` #22 for the full evidence.
 - **OpenCode has no "ask for confirmation" mode** — only allow or hard
   block. Rules meant to just pause for confirmation on Claude Code become
   full blocks on OpenCode. Confirmed live: both a `"block"` rule and a
@@ -85,19 +92,26 @@ actual evidence instead of the agent's own say-so.
   theoretical evasion ceiling like the regex-interception point above —
   worth knowing if you're integrating a service `policy.json` doesn't
   already have a rule for.
-- **Live-verified on Claude Code and OpenCode; Codex still untested
-  end-to-end.** Loading the plugin into a real Claude Code session
-  (`claude --plugin-dir founder-os/`) confirmed the PreToolUse hook's
-  three decision states (allow/ask/deny), the Stop hook's
-  approve/block/re-approve sequence including the anti-infinite-loop
+- **Live-verified on all 3 platforms.** Loading the plugin into a real
+  Claude Code session (`claude --plugin-dir founder-os/`) confirmed the
+  PreToolUse hook's three decision states (allow/ask/deny), the Stop
+  hook's approve/block/re-approve sequence including the anti-infinite-loop
   safeguard, and skill/agent/command discovery — and caught a real bug
   in the process (the Stop hook was emitting a decision value Claude
   Code's schema doesn't accept; see `FAILURE-MODES.md` #19). A real
   OpenCode session (`opencode run` with `adapters/opencode/plugin.ts`
   loaded) confirmed the safety hook and audit log, and surfaced the
-  skill/subagent/command discovery gaps described above. Codex is still
-  only tested against its config logic directly (`npm test`), not inside
-  a live session.
+  skill/subagent/command discovery gaps described above. Codex CLI has no
+  usable credentials in this environment, so it was verified as deeply as
+  that constraint allows: `codex doctor --json` and `codex sandbox`
+  (both auth-free) confirmed `sandbox_mode`'s `read-only` vs
+  `workspace-write` distinction genuinely blocks/allows filesystem writes
+  at the OS level, and disproved `config.toml.snippet`'s claim that a
+  project-scoped `.codex/config.toml` is read at all (it isn't — see
+  `FAILURE-MODES.md` #29). It also surfaced a real open question — Codex
+  now has its own `hooks` feature that founder-os doesn't use yet — that
+  couldn't be resolved without a real authenticated session; see
+  `FAILURE-MODES.md` #22.
 
 Every generated project also gets its own copy of the platform-limitations
 table in its `AGENTS.md`, in plain language, not just here.
@@ -124,8 +138,11 @@ none of founder-os's skills will be discoverable (verified live — see
 skill library — the 3 bundled subagents and 5 commands aren't reachable
 under OpenCode at all currently; see `FAILURE-MODES.md` for why.
 
-**Codex CLI** — see `adapters/codex/config.toml.snippet`; no code-level
-hook exists, only sandbox policy defaults.
+**Codex CLI** — merge `adapters/codex/config.toml.snippet` into
+`~/.codex/config.toml` (global only — Codex does not read a project-scoped
+`.codex/config.toml`; verified live, see `FAILURE-MODES.md` #29). Only
+sandbox policy defaults are wired up; founder-os doesn't yet build against
+Codex's own separate `hooks` feature (see `FAILURE-MODES.md` #22).
 
 ## Development
 

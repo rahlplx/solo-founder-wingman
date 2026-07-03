@@ -32,6 +32,42 @@ what a command expects) bump the **major** version.
 
 ### Security
 
+## [0.3.3] - 2026-07-03
+
+Third live install/test pass, this time against Codex CLI. No OpenAI
+credentials exist in this environment, so this pass verified everything
+that's auth-free (`codex doctor --json`, `codex features list`, `codex
+sandbox`) and stopped short of a live agentic session. That still caught
+one confirmed doc bug and one significant open question.
+
+### Changed
+- Newly documented: Codex CLI has its own separate `hooks` feature
+  (`codex features list` shows it stable/enabled by default), with a wire
+  vocabulary that closely mirrors Claude Code's own hook contract
+  (`PreToolUse`/`PostToolUse`/`SessionStart`/`SubagentStart`/
+  `UserPromptSubmit`, a `hooks.json` file, a hook-trust/review workflow).
+  founder-os does not build against it yet — it's only installable
+  through Codex's plugin/marketplace system, not a plain config file, and
+  verifying it actually intercepts a tool call needs a real authenticated
+  session this environment doesn't have. Tracked as an open question, not
+  a settled platform ceiling anymore (`FAILURE-MODES.md` #22).
+- Live-confirmed Codex's `sandbox_mode` genuinely enforces at the OS
+  level: a real file survives a delete attempt under `read-only` (blocked
+  with `Read-only file system`) and is actually removed under
+  `workspace-write` (the same command, same file, exit 0).
+
+### Fixed
+- `config.toml.snippet` claimed Codex reads a project-scoped
+  `.codex/config.toml` in addition to the global one. It doesn't —
+  confirmed live via `codex doctor --json`: distinguishing values set in
+  a project's `.codex/config.toml` (`model`, then `approval_policy`/
+  `sandbox_mode`) never changed what `codex doctor` reported. Corrected
+  the snippet's header comment, `README.md`, and `templates/AGENTS.md.tpl`
+  to state Codex config is global-only (`~/.codex/config.toml` or a named
+  `-p`/`--profile`), not project-scoped (`FAILURE-MODES.md` #29).
+
+### Security
+
 ## [0.3.2] - 2026-07-03
 
 Second live install/test pass, this time against OpenCode. This file's
