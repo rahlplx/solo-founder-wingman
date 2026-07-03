@@ -266,7 +266,7 @@ Claude Code session via `claude -p --plugin-dir founder-os/` and
 inspecting `--include-hook-events` output directly. Every "allow" path
 produced a live, visible error from Claude Code's own validator:
 
-```
+```text
 Hook JSON output validation failed — (root): Invalid input
 The hook's output was: {"decision": "allow"}
 Expected schema: ... "decision": "approve" | "block" (optional) ...
