@@ -212,7 +212,7 @@ skill wizard.
 
 ## 6. Skills Library
 
-**Purpose:** discover, run, and review the 18 skills and MCP integrations.
+**Purpose:** discover, run, and review the 19 skills and MCP integrations.
 **Primary persona:** Non-Technical Solo Builder.
 
 **Layout:** grid of skill cards (BRIEF, HIRE, SHOW, LEGO, PLUG, PATH, SHIP,

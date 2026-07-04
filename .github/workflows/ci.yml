@@ -69,6 +69,9 @@ jobs:
       - name: Run core policy-engine unit tests
         working-directory: founder-os
         run: npm run test:core
+      - name: Run failure-classification unit tests
+        working-directory: founder-os
+        run: npm run test:failure-classification
       - name: Run schema validation regression tests
         working-directory: founder-os
         run: npm run test:schema

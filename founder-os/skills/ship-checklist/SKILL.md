@@ -37,6 +37,11 @@ check before that happens, run fresh, every time.
    or Yellow means fix first — don't ship with a caveat attached instead
    of a fix.
 
+7. **After the deploy actually happens, hand off to `/ship-retro`.** This
+   checklist gets the feature out the door; `/ship-retro` is the short
+   follow-up that captures what that build actually taught, once, right
+   after shipping.
+
 This skill is fully self-contained: no dedicated bin script exists or is
 needed for it. All four checks run directly via tools the agent already
 has (Bash for grep/tests, Read for code inspection, the `playwright` MCP

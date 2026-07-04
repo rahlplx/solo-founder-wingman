@@ -113,6 +113,88 @@
       "keywords": ["curl", "wget", "nc"]
     },
     {
+      "id": "secrets-github-token",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bgh[oprsu]_[A-Za-z0-9]{20,}\\b|\\bgithub_pat_[A-Za-z0-9_]{20,}\\b",
+      "action": "confirm",
+      "message": "A GitHub personal access token or fine-grained token appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["ghp_", "gho_", "ghu_", "ghs_", "ghr_", "github_pat_"]
+    },
+    {
+      "id": "secrets-aws-access-key-id",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bAKIA[0-9A-Z]{16}\\b",
+      "action": "confirm",
+      "message": "An AWS access key ID appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["AKIA"]
+    },
+    {
+      "id": "secrets-aws-secret-key",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "aws_secret_access_key\\s*[:=]\\s*[\"']?[A-Za-z0-9/+]{40,}[\"']?",
+      "flags": "i",
+      "action": "confirm",
+      "message": "An AWS secret access key appears to be present (matched by its conventional variable name plus a 40-character value). Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["aws_secret_access_key"]
+    },
+    {
+      "id": "secrets-openai-api-key",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bsk-(?!ant-)[A-Za-z0-9_-]{20,}\\b",
+      "action": "confirm",
+      "message": "An OpenAI API key appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["sk-"]
+    },
+    {
+      "id": "secrets-anthropic-api-key",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bsk-ant-[A-Za-z0-9_-]{20,}\\b",
+      "action": "confirm",
+      "message": "An Anthropic API key appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["sk-ant-"]
+    },
+    {
+      "id": "secrets-slack-token",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bxox[baprs]-[A-Za-z0-9-]{10,}\\b",
+      "action": "confirm",
+      "message": "A Slack token appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["xox"]
+    },
+    {
+      "id": "secrets-npm-token",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bnpm_[A-Za-z0-9]{30,}\\b",
+      "action": "confirm",
+      "message": "An npm access token appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["npm_"]
+    },
+    {
+      "id": "secrets-google-api-key",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "\\bAIza[0-9A-Za-z_-]{35,}\\b",
+      "action": "confirm",
+      "message": "A Google API key appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["AIza"]
+    },
+    {
+      "id": "secrets-pem-private-key",
+      "category": "secrets",
+      "scope": "any",
+      "pattern": "-----BEGIN\\s+(RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----",
+      "action": "confirm",
+      "message": "A PEM-encoded private key block appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
+      "keywords": ["private key"]
+    },
+    {
       "id": "prod-boundary-destructive-with-prod-flag",
       "category": "prod_boundary",
       "scope": "bash",

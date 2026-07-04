@@ -33,6 +33,35 @@ what a command expects) bump the **major** version.
   up. `/founding-prompt`'s prerequisite check now points here first when
   the founder seems unfamiliar with the tool itself, ahead of
   `/validate-demand`. 18 skills total.
+- `core/failure-classification.js`: a small, dependency-free
+  `classifyFailure()`/`formatFailureMessage()` pattern (adapted from
+  rahlplx/vibemate's `src/shared/failure-classification.ts`, MIT) that
+  turns a raw error/test-output string into a plain-English
+  `[kind] reason | Next: ... | (confidence: high|low)` line. Wired into
+  `bin/verify-gate.sh`'s failing-test output so a founder gets a
+  classified headline (e.g. `[not-found] ... Next: check the path`)
+  before the raw test-command dump, instead of just the dump. An ordinary
+  failing assertion correctly falls back to a low-confidence "read the
+  output below" rather than fabricating a specific cause.
+- `policy.json`: 9 new `scope:"any"` secret-detection rules (GitHub
+  personal-access/fine-grained tokens, AWS access key ID, AWS secret
+  access key, OpenAI key, Anthropic key, Slack token, npm token, Google
+  API key, PEM private key), inspired by rahlplx/vibemate's
+  `src/security/secret-scanner.ts` pattern coverage. `bin/scan-secrets.js`
+  needed zero code changes to pick these up — it already reuses whatever
+  `scope:"any"` rules exist in `policy.json` by design. Previously only
+  one such rule existed (a live Stripe key), so both the PreToolUse
+  Edit/Write/MultiEdit hook and the repo-wide secret scan were far
+  narrower than intended.
+- New skill `/ship-retro` (`skills/ship-retro/SKILL.md`) — a short
+  retrospective run once per shipped feature (after `/ship-checklist`'s
+  Green verdict and the actual deploy), gathering evidence from
+  `CHANGELOG.md`, `/audit-summary`, and any `/debug-seb` sessions, then
+  feeding genuine lessons forward into `PRD.md`'s non-goals or behavior
+  rules rather than a new log file nobody else reads. Closes a real gap:
+  founder-os's lifecycle previously had no step that looked backward after
+  shipping. `/ship-checklist` now hands off to it explicitly. 19 skills
+  total.
 
 ### Changed
 

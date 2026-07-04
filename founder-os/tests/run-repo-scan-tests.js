@@ -115,6 +115,18 @@ function testScanSecrets() {
   const afterCleanup = runScanSecrets();
   check('scan-secrets: passes again once the fixture is unstaged and removed', afterCleanup.status === 0, afterCleanup.stdout + afterCleanup.stderr);
 
+  withStagedFixture('founder-os/__tmp-aws-key-fixture.txt', 'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n', () => {
+    const withSecret = runScanSecrets();
+    check(
+      'scan-secrets: also fires on a vendor pattern beyond the original Stripe rule (AWS access key ID)',
+      withSecret.status === 1 && withSecret.stderr.includes('secrets-aws-access-key-id'),
+      withSecret.stdout + withSecret.stderr
+    );
+  });
+
+  const afterAwsCleanup = runScanSecrets();
+  check('scan-secrets: passes again once the AWS-key fixture is unstaged and removed', afterAwsCleanup.status === 0, afterAwsCleanup.stdout + afterAwsCleanup.stderr);
+
   withStagedFixture('founder-os/__tmp-secret-fixture.md', 'sk_live_TESTDETECTION123\n', () => {
     const excludedMd = runScanSecrets();
     check(

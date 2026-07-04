@@ -162,6 +162,66 @@ function testVerifyGate() {
     );
   }
 
+  // Failure classification: an infra-shaped failure (here, ENOENT from a
+  // missing command) gets a plain-English "[kind] ... Next: ..." headline
+  // prepended before the raw tail, via core/failure-classification.js.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'x', scripts: { test: 'this-command-does-not-exist-anywhere' } })
+    );
+    commitAll(dir, 'init');
+    const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = null;
+    }
+    check(
+      'verify-gate: an ENOENT-shaped failure (missing command) gets a classification headline (not-found) before the raw tail',
+      status === 0 &&
+        parsed &&
+        parsed.decision === 'block' &&
+        typeof parsed.reason === 'string' &&
+        parsed.reason.includes('[not-found]') &&
+        parsed.reason.includes('Next:') &&
+        parsed.reason.includes('this-command-does-not-exist-anywhere'),
+      stdout
+    );
+  }
+
+  // Failure classification: an ordinary failing assertion has no infra
+  // signature to match -- classifies honestly as unknown/low-confidence
+  // rather than fabricating a specific cause, and still surfaces the raw
+  // tail below it either way.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ name: 'x', scripts: { test: 'echo "AssertionError: expected 2 to equal 3" && exit 1' } })
+    );
+    commitAll(dir, 'init');
+    const { stdout, status } = runScript(VERIFY_GATE, { stop_hook_active: false }, { cwd: dir });
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch {
+      parsed = null;
+    }
+    check(
+      'verify-gate: an ordinary failing assertion classifies honestly as [unknown] (low confidence) rather than a fabricated cause',
+      status === 0 &&
+        parsed &&
+        parsed.decision === 'block' &&
+        parsed.reason.includes('[unknown]') &&
+        parsed.reason.includes('confidence: low') &&
+        parsed.reason.includes('AssertionError: expected 2 to equal 3'),
+      stdout
+    );
+  }
+
   // Fail-safe: node missing mid-script -- still emits valid allow JSON,
   // exit 0, loud stderr warning, not a crash.
   {
