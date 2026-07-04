@@ -1,5 +1,7 @@
 ---
 description: Add a new page/screen to the app, using visual references if available.
+argument-hint: <page description>
+allowed-tools: Read, Grep, Glob, Write, Edit, Bash
 ---
 
 EXISTING APP: see PRD.md and AGENTS.md for current state and tech stack.

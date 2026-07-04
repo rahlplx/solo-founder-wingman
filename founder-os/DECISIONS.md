@@ -96,6 +96,54 @@ re-derive the dependency-delivery problem above rather than reach for
 
 ---
 
+## Skill frontmatter: no per-skill `category` or `version` fields
+
+**Decision:** `skills/*/SKILL.md` frontmatter stays at exactly two fields
+(`name`, `description`). No `category` or `version` field is added, even
+though both appear in real, community-verified Claude Code plugins
+surveyed for comparison.
+
+**Why this needed a real decision, not a default:** a reverse-engineering
+pass across 3 real plugin repos (Anthropic's own official marketplace,
+`davepoon/buildwithclaude`, and `shopwareLabs/ai-coding-tools`) found both
+fields in active use elsewhere, so simply copying what's "out there"
+would have added them by default.
+
+**`category` — rejected.** Anthropic's own pattern puts category at the
+*marketplace* level (`marketplace.json`'s per-plugin `category` field),
+and founder-os already has one there (`"category": "safety"`).
+`davepoon/buildwithclaude`'s per-file `category` field exists because
+their "plugins" are multi-domain bundles (e.g. one plugin grouping a
+business analyst, a legal advisor, a payment-integration agent, and a
+quant analyst) that need internal sub-categorization to stay navigable.
+founder-os's skills (17 as of this writing) are one domain (solo-founder
+lifecycle) inside one plugin that's already correctly categorized once,
+at the level that actually needs it. Adding a second, redundant categorization layer here
+would recreate the exact "inconsistent metadata across a catalog"
+anti-pattern found in Anthropic's own official catalog (many entries
+missing `category`/`version` entirely) — self-inflicted, for no
+navigability founder-os doesn't already have.
+
+**`version` — rejected.** Anthropic's own official plugins (`code-review`,
+`feature-dev`) don't consistently carry a `version` field either — their
+own inconsistency here is one of the anti-patterns the survey flagged,
+not a model to replicate. founder-os already has one authoritative
+version (`.claude-plugin/plugin.json`'s `version`, kept in sync with
+`package.json` and the repo-root `marketplace.json` — see
+`bin/check-version-sync.js`), plus `CHANGELOG.md` and this file tracking
+behavioral history at a finer grain than a bare per-skill semver would
+add. 16 independent per-skill versions that must either move in lockstep
+with the plugin version or drift independently is new surface area with
+no concrete problem behind it today.
+
+**What would change this decision:** if founder-os's skill set later
+fragments into genuinely distinct domains (not just more skills within
+the existing solo-founder lifecycle), a per-skill `category` might earn
+its place — revisit then, against a real navigability problem, not
+speculatively.
+
+---
+
 ## DECISIONS.md is the tiebreaker
 
 When two files in this repo (a code comment, a README claim, a skill's

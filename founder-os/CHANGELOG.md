@@ -32,6 +32,59 @@ what a command expects) bump the **major** version.
 
 ### Security
 
+## [0.4.0] - 2026-07-04
+
+Skill/command interface change (new required PRD section) plus a new
+skill — bumping minor per this file's own versioning policy.
+
+### Added
+- New skill `/adopt-existing-project` (`skills/adopt-existing-project/
+  SKILL.md`) for a project that already has code before founder-os is
+  installed — reverse-engineers a PRD.md/AGENTS.md from the existing
+  codebase (detecting existing convention files from other tools, e.g.
+  `.cursorrules`, to import from) instead of eliciting from scratch,
+  distinguishes already-shipped/live projects from mid-build ones when
+  framing non-goals, then hands off into `/map-architecture` exactly as
+  `/founding-prompt` does. 17 skills total.
+- New required PRD section, `## Compliance & Regulatory Scope`
+  (`templates/PRD.md.tpl`, enforced by `bin/lint-prd.js`) — surfaces what
+  regulated/sensitive data (if any) a founder's product handles and which
+  regulations that implies (GDPR/PCI/HIPAA/etc.), or an explicit "none"
+  statement. `/founding-prompt`'s BRIEF elicitation now asks for this
+  alongside data model/integrations/success metrics.
+- `commands/*.md` frontmatter now includes `argument-hint` and
+  `allowed-tools` on all 5 commands, matching Claude Code's current
+  documented command format (previously only `description`).
+  `allowed-tools` here pre-approves each command's actually-used tools to
+  reduce permission-prompt friction — per Claude Code's own documentation,
+  it does **not** restrict tool access; every tool remains callable
+  subject to your own permission settings.
+- New `bin/lint-harness.js` check: a skill directory may not contain
+  anything besides `SKILL.md` (closes a previously-unenforced gap; all 17
+  skill directories already satisfied this on landing).
+
+### Changed
+- `audit/companion-ux/*` (the companion UI design proposal) simplified
+  from 4 personas to 1: **Non-Technical Solo Builder**. Hired
+  Collaborator and Client/Stakeholder, the Dev Mode toggle, and the
+  Freelancer Loop Workspace screen are removed from the proposal. This
+  does not affect the already-shipped `founder-os/companion/` (Session
+  Overview remains read-only) or the actual `/hire-agent`/`/handoff`
+  skills, which are unrelated terminal/CLI concerns.
+
+### Fixed
+- `bin/lint-harness.js`'s frontmatter parser didn't match hyphenated keys
+  (`^[A-Za-z0-9_]+:` excluded `-`), which would have silently made the
+  new `argument-hint`/`allowed-tools` checks never pass regardless of
+  file content. Fixed before it shipped as a real bug.
+
+**Compatibility note:** any project's `PRD.md` generated before this
+release will fail `bin/lint-prd.js`'s new required-section check the
+next time `/map-architecture` re-runs the gate, even if nothing about the
+product itself changed. Backfill a `## Compliance & Regulatory Scope`
+section (a one-line "no regulated data handled" is sufficient if true)
+before re-running `/map-architecture` against an older PRD.
+
 ## [0.3.3] - 2026-07-03
 
 Third live install/test pass, this time against Codex CLI. No OpenAI

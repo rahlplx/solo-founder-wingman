@@ -2,8 +2,8 @@
 
 Scope: a web companion UI over a running founder-os CLI/agent session.
 Persistent chrome across every screen: left sidebar (navigation + session
-health), top header (persona switcher, Dev Mode toggle, global command
-bar), and a notification center for pending approvals. No screen below may
+health), top header (global command bar), and a notification center for
+pending approvals. No screen below may
 present data that could drift from what the CLI session actually did —
 this is a visualization and control layer, not a second engine.
 
@@ -30,7 +30,7 @@ historical/aspirational except where a line is marked **[shipped]**.
 **Purpose:** single window into the active CLI/agent session — a
 chronological, plain-English-first feed of every proposed action and
 policy decision.
-**Primary personas:** Founder, Hired Collaborator, Agent (as represented
+**Primary personas:** Non-Technical Solo Builder; Agent (as represented
 actor).
 
 **Layout:** primary content is a vertically scrolling timeline of cards,
@@ -81,17 +81,16 @@ disconnected); empty timeline before any event arrives.
 
 **Purpose:** translate `policy.json` into a plain-English-first view of
 what's protected, with full technical detail available on demand.
-**Primary personas:** Founder, Hired Collaborator.
+**Primary persona:** Non-Technical Solo Builder.
 
 **Layout:** a rule list (plain-English name, severity, recent match count)
 with a detail panel per rule; a **persistent, non-dismissible** banner
 stating the actual current limitation of regex-based interception.
 
 **Functional requirements:**
-- Founder can toggle a rule's mode (Block / Ask / Allow) or request
-  Collaborator review.
-- Collaborator, via Dev Mode, sees and can edit the raw regex pattern,
-  `scope`, and `keywords` fields exactly as they exist in `policy.json`.
+- Founder can toggle a rule's mode (Block / Ask / Allow). A second
+  opinion, if wanted, comes from the terminal `/multi-model-review`
+  skill, out of band from this UI — not a second persona inside it.
 - Visually distinguish platform coverage — e.g. flag plainly when the
   active session is Codex, which has no code-level block today
   (`approval_policy`/`sandbox_mode` only).
@@ -122,7 +121,7 @@ toggle, it must be visibly labeled "planned," not offered as live.
 **Purpose:** searchable, filterable record of every policy decision that
 actually intervened (ask/deny/block — not plain allows, matching how
 `bin/audit-log.js` already scopes what it records).
-**Primary personas:** Hired Collaborator (primary), Founder (summary view).
+**Primary persona:** Non-Technical Solo Builder.
 
 **Layout:** filterable list (decision type, agent, time range) on the left;
 selected entry expands into raw intercepted command, matched rule ID, and
@@ -132,7 +131,9 @@ any attached evidence.
 - Export a filtered view.
 - Link any entry to a `PRD.md` milestone.
 - Surface the plain-English summary founder-os's own `bin/audit-summary.js`
-  already generates as the default view; raw JSON only in Dev Mode.
+  already generates as the default view, with a plain per-entry "show raw
+  entry" expandable available directly — a detail-disclosure, not a
+  persona split; there's no separate mode gating it.
 
 **Non-functional requirements:** every entry shows an immutable hash and
 its origin (agent ID, platform, session); this is the accountability
@@ -151,8 +152,7 @@ as such, not as missing data).
 
 **Purpose:** structurally enforce founder-os's central premise — a "done"
 claim is meaningless without attached, mechanically-generated evidence.
-**Primary personas:** Founder, Agent (claims), Hired Collaborator, Client
-(read-only, via the Freelancer Loop Workspace).
+**Primary personas:** Non-Technical Solo Builder, Agent (claims).
 
 **Layout:** split view — left is the agent's plain-English completion
 claim; right is reserved *exclusively* for evidence: test output (ANSI
@@ -165,8 +165,8 @@ before/after slider), or curl/API responses.
 - "Run tests again" re-invokes the project's actual verify command through
   the CLI (`bin/verify-gate.sh`'s underlying test command), not a
   simulated result.
-- Founder or Collaborator can attach manual evidence (e.g. a screen
-  recording) alongside automated evidence.
+- Founder can attach manual evidence (e.g. a screen recording) alongside
+  automated evidence.
 
 **Non-functional requirements:** every evidence artifact must be visibly
 tamper-evident — a system-generated badge distinguishing "produced by the
@@ -186,8 +186,7 @@ image artifacts.
 **Purpose:** the living source of truth for requirements, milestones, and
 risk — kept in sync with the actual `PRD.md`/`AGENTS.md`/`CHANGELOG.md`
 files the document engine already generates.
-**Primary personas:** Founder, Hired Collaborator; Client in read-only
-milestone view.
+**Primary persona:** Non-Technical Solo Builder.
 
 **Layout:** rich-text block editor over `PRD.md`, serialized back to
 strict Markdown; a milestone progress bar; tabs for `PRD.md` / `AGENTS.md`
@@ -213,8 +212,8 @@ skill wizard.
 
 ## 6. Skills Library
 
-**Purpose:** discover, run, and review the 16 skills and MCP integrations.
-**Primary personas:** Founder.
+**Purpose:** discover, run, and review the 17 skills and MCP integrations.
+**Primary persona:** Non-Technical Solo Builder.
 
 **Layout:** grid of skill cards (BRIEF, HIRE, SHOW, LEGO, PLUG, PATH, SHIP,
 LOCK, SEB, etc.); selecting one opens a step-by-step run wizard.
@@ -237,49 +236,22 @@ progress, never a silent hang.
 
 ---
 
-## 7. Freelancer Loop Workspace (Package → Share → Feedback)
+## 7. Command Palette / Quick Actions
 
-**Purpose:** close the gap identified in `audit/issues/FEATURE-001.md` —
-packaging a verified deliverable for client review and turning feedback
-back into backlog work.
-**Primary personas:** Founder, Client; Hired Collaborator (visibility).
+**Note:** this screen was previously numbered 8. Screen 7 (Freelancer
+Loop Workspace) has been removed — it existed specifically to serve the
+Hired Collaborator and Client/Stakeholder personas, both dropped from
+this proposal (see `USER-FLOWS.md`). Removing it does **not** solve the
+gap it was meant to close (`audit/issues/FEATURE-001.md`'s Freelancer
+Loop) — that gap remains open and would need its own single-persona-
+shaped proposal if ever revisited; it isn't quietly resolved by this
+deletion.
 
-**Layout (Founder view):** Kanban board — Draft / Sent for Review /
-Feedback Received / Approved.
-**Layout (Client view):** a stripped single-deliverable page: the artifact,
-its attached verify-gate evidence, and a comment/annotation tool. No
-sidebar, no other project data reachable from this view.
-
-**Functional requirements:**
-- Generate a scoped, expiring, passwordless share link.
-- Convert client annotations into structured `PRD.md` tasks automatically
-  (title, description, priority, linked evidence).
-- On client approval, correlate the approval with the underlying
-  verify-gate evidence to produce a "Proof of Work" record.
-
-**Non-functional requirements:** the client-facing view must never expose
-policy internals, raw audit log entries, or any other project's data —
-its whole design goal is zero technical or platform exposure.
-
-**States:** expired link → polite "ask the founder for a new link" page,
-no error jargon.
-
-**Reads:** `PRD.md`, verify-gate evidence.
-**Writes:** structured feedback tasks; a Proof of Work record.
-**Dependency:** there is no verified-work-log/invoicing export in
-founder-os today — this screen's "generate an invoice-ready bundle" action
-requires that backend capability to exist first. Until then, this screen
-can package evidence + approval into a plain export file, but should not
-claim to produce invoicing-system-ready output.
-
----
-
-## 8. Command Palette / Quick Actions
-
-**Purpose:** a single global entry point for natural-language requests
-(Founder) and direct CLI-equivalent commands (Collaborator).
-**Primary personas:** Hired Collaborator (direct commands), Founder
-(natural language, limited scope).
+**Purpose:** a single global entry point for natural-language requests.
+**Primary persona:** Non-Technical Solo Builder — natural language
+primary, with an optional raw-command entry mode retained as a
+power-user detail of the same person (not a second persona's surface),
+for a builder who gets more comfortable with the tool over time.
 
 **Functional requirements:** maps a founder's natural-language request to
 a pre-authorized skill run where possible, and surfaces any policy rule

@@ -20,11 +20,11 @@ actual evidence instead of the agent's own say-so.
 ## What this is (and isn't)
 
 **In scope:**
-- A lifecycle orchestrator and skill library (16 skills implementing named
+- A lifecycle orchestrator and skill library (17 skills implementing named
   frameworks — BRIEF, HIRE, SHOW, LEGO, PLUG, PATH, SHIP, LOCK, SEB,
-  3-Layer Review, 3-3-3, smell-test, plus commit-discipline and
-  session-handoff skills) that guides a founder from idea to shipped
-  product using an AI coding agent.
+  3-Layer Review, 3-3-3, smell-test, plus commit-discipline,
+  session-handoff, and existing-project-adoption skills) that guides a
+  founder from idea to shipped product using an AI coding agent.
 - A safety/policy layer that intercepts destructive, secret-leaking, or
   cost-risky agent actions before they run, on platforms that support it.
 - A document engine that generates and maintains `PRD.md`, `AGENTS.md`,

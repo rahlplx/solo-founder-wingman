@@ -14,9 +14,7 @@ documented in the repo-root `AGENTS.md`.
 | Evidence-gated completion screen | **Verify-Gate** / Evidence Viewer | CI artifact pages (GitHub Actions, Vercel build logs) | "Tests ran, here's the output" is a pattern already learned from any CI experience, even secondhand. |
 | Requirements + milestones doc | **Blueprint** (PRD/AGENTS/CHANGELOG view) | Notion pages + Linear milestones | Document-plus-tracker mental model, not a raw text file. |
 | Skill/integration marketplace | **Skills Library** | Plugin marketplaces (Vercel/Netlify integrations) | "Browse and enable capabilities" pattern. |
-| Client packaging + review | **Freelancer Loop Workspace** / Review Link | Figma share links, Dropbox Paper, GitHub PR review requests | Signals "external, read-and-comment, no account needed" instantly. |
 | Global command entry point | **Command Palette** / Command Bar | Linear, Raycast, VS Code | Cmd/Ctrl+K to do anything is now a nearly universal SaaS pattern. |
-| Plain-English/raw data switch | **Dev Mode** | Figma's Dev Mode | Immediately signals "this reveals the technical layer underneath." |
 | Safety/interception concept generally | **Guardrails** | Widely used across the AI industry (OpenAI, Anthropic usage) | More approachable than "policy engine" or "regex ruleset" without hiding what it does. |
 | Approve/deny/pause action | **Ask / Allow / Deny / Blocked** | Mirrors founder-os's own existing Claude Code decision vocabulary exactly | No new vocabulary to invent — the UI's language should match `bin/policy-check.js`'s actual decision states, including OpenCode's narrower allow/block-only set where that's the active platform. |
 

@@ -1,5 +1,7 @@
 ---
 description: Safely clean up an area of the codebase that's grown messy, without changing behavior.
+argument-hint: <area to clean up>
+allowed-tools: Read, Grep, Glob, Edit, MultiEdit, Write, Bash
 ---
 
 CONTEXT: This area has grown organically and needs cleanup: $ARGUMENTS

@@ -1,5 +1,7 @@
 ---
 description: Fix a bug using the SEB method (Screenshot, Error message, Before/After) instead of a vague description.
+argument-hint: <bug description>
+allowed-tools: Read, Grep, Glob, Edit, Bash
 ---
 
 PROBLEM: $ARGUMENTS

@@ -1,5 +1,7 @@
 ---
 description: Review recent code for bugs, security issues, and performance problems, reported in plain English with a Red/Yellow/Green rating.
+argument-hint: "[file or area to review]"
+allowed-tools: Read, Grep, Glob, Bash
 ---
 
 ROLE: Senior code reviewer and security auditor.

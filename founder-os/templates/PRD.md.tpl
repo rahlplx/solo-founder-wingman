@@ -43,6 +43,16 @@ implements should trace back to one of these.
 - Payments: subscription status, billing history
 -->
 
+## Compliance & Regulatory Scope
+
+{{COMPLIANCE_SCOPE}}
+<!-- e.g.
+- Data handled: emails, names, payment tokens (via Stripe, no raw card data stored)
+- Applicable regulations: GDPR (EU users), PCI-DSS (via Stripe SAQ A, not full scope)
+- Required disclosures: privacy policy, cookie consent, data-deletion request process
+- If none of the above apply, say so explicitly: "No regulated data handled — no compliance scope for v1." Don't leave this blank.
+-->
+
 ## Integrations
 
 {{INTEGRATIONS}}

@@ -51,7 +51,9 @@ function parseFrontmatter(content) {
   if (!match) return null;
   const fields = {};
   for (const line of match[1].split('\n')) {
-    const fieldMatch = line.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
+    // Hyphenated keys (argument-hint, allowed-tools) must match here --
+    // [A-Za-z0-9_]+ alone would silently never capture them.
+    const fieldMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (fieldMatch) fields[fieldMatch[1]] = fieldMatch[2].trim();
   }
   return fields;
@@ -68,6 +70,16 @@ function lintSkills() {
     const skillPath = path.join(SKILLS_DIR, dir.name, 'SKILL.md');
     check(`skills/${dir.name}: has a SKILL.md`, fs.existsSync(skillPath));
     if (!fs.existsSync(skillPath)) continue;
+
+    // Ignore OS/IDE-generated hidden files (.DS_Store, etc.) -- they're
+    // not tracked in git and not this check's concern; a founder browsing
+    // the plugin directory in Finder shouldn't trip a structural lint.
+    const entries = fs.readdirSync(path.join(SKILLS_DIR, dir.name)).filter((f) => !f.startsWith('.'));
+    check(
+      `skills/${dir.name}: contains only SKILL.md`,
+      entries.length === 1 && entries[0] === 'SKILL.md',
+      `found: ${entries.join(', ')}`
+    );
 
     const content = fs.readFileSync(skillPath, 'utf8');
     const fm = parseFrontmatter(content);
@@ -122,6 +134,8 @@ function lintCommands() {
     if (!fm) continue;
 
     check(`commands/${file}: frontmatter has a non-empty description`, !!fm.description);
+    check(`commands/${file}: frontmatter has a non-empty argument-hint`, !!fm['argument-hint']);
+    check(`commands/${file}: frontmatter has a non-empty allowed-tools`, !!fm['allowed-tools']);
   }
 }
 

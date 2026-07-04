@@ -11,9 +11,17 @@ to read `audit/`). **One exception:** Session Overview (`SRS.md`'s screen
 the decisions recorded in `founder-os/DECISIONS.md` — that section of
 `SRS.md`/`USER-FLOWS.md` is marked `[shipped]` inline and describes real,
 current behavior. Every other screen (Safety Center, Verify-Gate Viewer,
-Blueprint, Skills Library, Freelancer Loop Workspace, Command Palette)
-remains proposal-only; don't assume any of them exist in code just because
-Session Overview now does.
+Blueprint, Skills Library, Command Palette) remains proposal-only; don't
+assume any of them exist in code just because Session Overview now does.
+
+**Also since simplified:** the proposal originally modeled 4 personas
+(Founder, Hired Collaborator, AI Coding Agent, Client/Stakeholder). It now
+models exactly one human persona, **Non-Technical Solo Builder** — Hired
+Collaborator and Client/Stakeholder, the Dev Mode toggle, and the
+Freelancer Loop Workspace screen have all been removed (see
+`USER-FLOWS.md` and `SRS.md`). This does not touch the actual,
+already-shipped `founder-os/skills/hire-agent/SKILL.md` skill, which is a
+terminal/CLI concern unrelated to this UI's persona model.
 
 ## Where this came from
 
@@ -60,10 +68,10 @@ de-duplicated, and corrected in two ways:
   session — never a second source of truth. If the CLI session is
   unreachable, every screen degrades to a read-only, clearly-labeled-stale
   view rather than inventing or caching a divergent state.
-- **Plain-English first, technical detail on demand, always.** Every
-  founder-facing surface needs a technical escape hatch for the Hired
-  Collaborator persona (see `USER-FLOWS.md`) — never force a trade-off
-  between the two.
+- **Plain-English first, always.** There's exactly one persona
+  (`USER-FLOWS.md`), and it can't read code — no screen needs a
+  raw/technical mode to serve a second, more technical audience, because
+  there isn't one.
 - **No screen invents data.** Every field in `SRS.md` maps to a founder-os
   artifact that already exists or could exist without a new backend
   capability; where it can't, that's called out as a dependency.
@@ -84,9 +92,7 @@ highest-leverage screens to prototype first (detailed in `SRS.md`):
 1. Session Overview (Session Timeline)
 2. Verify-Gate / PATH Evidence Viewer
 3. Safety Center (policy rules, plain-English first)
-4. Freelancer Loop Workspace (package → share → client feedback)
-5. Audit Log Explorer
+4. Audit Log Explorer
 
 This order front-loads the two things founder-os's own docs already say
-matter most: safety and evidence-backed "done" claims, before the
-Freelancer Loop expansion.
+matter most: safety and evidence-backed "done" claims.
