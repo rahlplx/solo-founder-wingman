@@ -123,7 +123,8 @@ native Claude Code:
 product surface, installed into a consumer's session via the plugin
 manifest. Implements named frameworks (BRIEF, HIRE, SHOW, LEGO, PLUG,
 PATH, SHIP, LOCK, SEB, 3-Layer Review, 3-3-3, smell-test) plus
-commit-discipline, session-handoff, and existing-project-adoption skills.
+commit-discipline, session-handoff, existing-project-adoption, and
+first-time-tool-orientation skills.
 Every skill/agent/command's frontmatter and section shape is checked
 structurally by
 `bin/lint-harness.js` — match the existing shape of its kind when adding

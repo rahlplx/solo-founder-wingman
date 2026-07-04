@@ -54,7 +54,7 @@ other skill in founder-os can keep assuming it.
    real, automatic stop. If they're on Codex CLI, protection today comes
    from its sandbox/approval settings instead — still a real safeguard,
    just a different mechanism. Don't imply identical protection across all
-   three; found this out once here rather than assuming it later.
+   three; spell this out once here rather than assuming it later.
 
 7. **Hand off to `/validate-demand`.** Once the founder can describe back,
    in their own words, roughly what an agent does, what a slash command
