@@ -20,11 +20,11 @@ actual evidence instead of the agent's own say-so.
 ## What this is (and isn't)
 
 **In scope:**
-- A lifecycle orchestrator and skill library (18 skills implementing named
+- A lifecycle orchestrator and skill library (19 skills implementing named
   frameworks — BRIEF, HIRE, SHOW, LEGO, PLUG, PATH, SHIP, LOCK, SEB,
   3-Layer Review, 3-3-3, smell-test, plus commit-discipline,
-  session-handoff, existing-project-adoption, and first-time-tool-
-  orientation skills) that guides a
+  session-handoff, existing-project-adoption, first-time-tool-
+  orientation, and post-ship-retrospective skills) that guides a
   founder from idea to shipped product using an AI coding agent.
 - A safety/policy layer that intercepts destructive, secret-leaking, or
   cost-risky agent actions before they run, on platforms that support it.

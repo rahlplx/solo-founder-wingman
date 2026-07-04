@@ -141,9 +141,19 @@ if "${RUN_TEST_CMD[@]}" > "$TEST_OUT" 2>&1; then
   echo '{"decision":"approve"}'
   exit 0
 else
+  # A plain-English "what kind of failure, what to do next" headline
+  # before the raw dump -- core/failure-classification.js pattern-matches
+  # the captured output for infra-shaped signatures (ENOENT, ECONNREFUSED,
+  # "command not found", etc). An ordinary failing assertion won't match
+  # any of those and correctly falls back to a low-confidence "read the
+  # output below," rather than fabricating a specific cause.
+  TAIL_OUT="$(tail -n 40 "$TEST_OUT")"
   # $'...' (ANSI-C quoting) so \n is an actual newline, not the literal two
   # characters "\" and "n" ending up in the JSON reason text.
-  REASON=$'Tests are failing, so this isn\'t verifiably done yet. Fix the failures below before finishing:\n\n'"$(tail -n 40 "$TEST_OUT")"
+  REASON=$'Tests are failing, so this isn\'t verifiably done yet. Fix the failures below before finishing:\n\n'"$(node -e '
+    const { classifyFailure, formatFailureMessage } = require(process.argv[2]);
+    process.stdout.write(formatFailureMessage(classifyFailure(process.argv[1])));
+  ' "$TAIL_OUT" "$SCRIPT_DIR/../core/failure-classification.js")"$'\n\n'"$TAIL_OUT"
   node -e '
     const reason = process.argv[1];
     process.stdout.write(JSON.stringify({decision:"block",reason}));

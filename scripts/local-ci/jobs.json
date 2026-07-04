@@ -7,6 +7,7 @@
     "audit:deps",
     "lint:harness",
     "test:core",
+    "test:failure-classification",
     "test:schema",
     "test:claude-code",
     "test:opencode",

@@ -4,8 +4,9 @@
   "private": true,
   "description": "Dev tooling for the founder-os plugin itself (test runners, CI). Not published; the plugin is distributed via .claude-plugin/plugin.json and the repo-root marketplace.json.",
   "scripts": {
-    "test": "npm run test:core && npm run test:schema && npm run test:claude-code && npm run test:opencode && npm run test:hooks && npm run test:settings && npm run test:redos-guard && npm run test:audit-log && npm run test:companion && npm run test:repo-scans && npm run test:lint-harness && npm run test:lint-prd && npm run test:ci-drift && npm run check:version-sync",
+    "test": "npm run test:core && npm run test:failure-classification && npm run test:schema && npm run test:claude-code && npm run test:opencode && npm run test:hooks && npm run test:settings && npm run test:redos-guard && npm run test:audit-log && npm run test:companion && npm run test:repo-scans && npm run test:lint-harness && npm run test:lint-prd && npm run test:ci-drift && npm run check:version-sync",
     "test:core": "node tests/run-core-engine-tests.js",
+    "test:failure-classification": "node tests/run-failure-classification-tests.js",
     "test:audit-log": "tsx tests/run-audit-log-tests.js",
     "test:companion": "node tests/run-companion-tests.js",
     "test:repo-scans": "node tests/run-repo-scan-tests.js",
