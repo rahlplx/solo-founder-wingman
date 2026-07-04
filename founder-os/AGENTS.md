@@ -118,7 +118,7 @@ native Claude Code:
   separate `hooks` feature with a wire vocabulary close to Claude Code's,
   but founder-os doesn't build against it yet (see `FAILURE-MODES.md`).
 
-**`skills/` (17), `agents/` (3: `qa-tester`, `code-critic`,
+**`skills/` (18), `agents/` (3: `qa-tester`, `code-critic`,
 `security-reviewer`), `commands/` (5)** — the actual founder-facing
 product surface, installed into a consumer's session via the plugin
 manifest. Implements named frameworks (BRIEF, HIRE, SHOW, LEGO, PLUG,

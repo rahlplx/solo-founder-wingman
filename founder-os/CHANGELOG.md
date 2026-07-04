@@ -25,8 +25,18 @@ what a command expects) bump the **major** version.
 ## [Unreleased]
 
 ### Added
+- New skill `/getting-started` (`skills/getting-started/SKILL.md`) for a
+  founder who has never used an AI coding agent (Claude Code, OpenCode, or
+  Codex CLI) before — orients them to the basic agent loop, slash
+  commands vs. skills, the policy safety pause, and the
+  evidence-over-claims expectation, before anything product-shaped comes
+  up. `/founding-prompt`'s prerequisite check now points here first when
+  the founder seems unfamiliar with the tool itself, ahead of
+  `/validate-demand`. 18 skills total.
 
 ### Changed
+
+
 
 ### Fixed
 

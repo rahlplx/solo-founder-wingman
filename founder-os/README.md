@@ -20,7 +20,7 @@ actual evidence instead of the agent's own say-so.
 ## What this is (and isn't)
 
 **In scope:**
-- A lifecycle orchestrator and skill library (17 skills implementing named
+- A lifecycle orchestrator and skill library (18 skills implementing named
   frameworks — BRIEF, HIRE, SHOW, LEGO, PLUG, PATH, SHIP, LOCK, SEB,
   3-Layer Review, 3-3-3, smell-test, plus commit-discipline,
   session-handoff, and existing-project-adoption skills) that guides a

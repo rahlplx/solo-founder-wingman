@@ -13,10 +13,12 @@ let this collapse into a five-minute exercise.
 
 ## What to do
 
-1. **Check prerequisites.** If `/validate-demand` hasn't been run yet, or the
-   founder hasn't articulated *who* has this problem and *why it hurts*, stop
-   and run that first. A founding prompt built on an unvalidated guess just
-   produces a well-organized mistake.
+1. **Check prerequisites.** If the founder still seems unfamiliar with AI
+   coding agents themselves — not the product idea, the tool — run
+   `/getting-started` first. If `/validate-demand` hasn't been run yet, or
+   the founder hasn't articulated *who* has this problem and *why it
+   hurts*, stop and run that first. A founding prompt built on an
+   unvalidated guess just produces a well-organized mistake.
 
 2. **Elicit the five BRIEF components**, one at a time, in conversation —
    don't dump a form at the founder:
