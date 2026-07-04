@@ -1,0 +1,123 @@
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  /* --allow/--deny are used as text color (.status--connected/
+     .status--disconnected), not just as a border accent, so they need to
+     clear WCAG AA's 4.5:1 text threshold -- not just the 3:1 non-text
+     threshold --border-color usages (.card--allow etc.) would settle for.
+     A single value can't clear 4.5:1 against both a white and a near-black
+     background at once (darkening green for light-mode text contrast
+     actively worsens it against dark-mode's near-black background), so
+     each is overridden per color-scheme below rather than shared. */
+  --allow: #15803d; /* 5.0:1 vs white */
+  --ask: #d97706; /* border-only usage today; already clears the 3:1 non-text threshold both ways */
+  --deny: #dc2626; /* 4.8:1 vs white */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --fg: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #262a33;
+    --allow: #22c55e; /* 8.3:1 vs the dark bg above -- #15803d would only clear 3.8:1 here */
+    --deny: #f87171; /* 6.8:1 vs the dark bg above -- the light-mode #dc2626 only clears 3.9:1 here */
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.subtitle {
+  margin: 0.75rem 1.5rem 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  max-width: 640px;
+}
+
+.status {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.status--connected {
+  color: var(--allow);
+  border-color: var(--allow);
+}
+.status--disconnected {
+  color: var(--deny);
+  border-color: var(--deny);
+}
+
+main {
+  padding: 1rem 1.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 720px;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+}
+.card--allow {
+  border-left-color: var(--allow);
+}
+.card--ask {
+  border-left-color: var(--ask);
+}
+.card--deny,
+.card--block {
+  border-left-color: var(--deny);
+}
+
+.badge {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-right: 0.5rem;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.tag {
+  font-style: italic;
+}
+
+.reason {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+}
