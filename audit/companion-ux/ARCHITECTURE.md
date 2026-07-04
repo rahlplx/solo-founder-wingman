@@ -21,11 +21,6 @@ flowchart LR
         UI["Session Overview / Safety Center /\nVerify-Gate Viewer / Blueprint / etc."]
     end
 
-    subgraph External["External parties"]
-        Client["Client / Stakeholder\n(scoped share link, no account)"]
-        Collab["Hired Collaborator\n(Dev Mode)"]
-    end
-
     Agent -->|proposes action| Hooks
     Hooks -->|evaluates via| Policy
     Policy -->|allow/ask/deny/block| Hooks
@@ -34,8 +29,6 @@ flowchart LR
     Bridge -->|stream events, session hash| UI
     UI -->|approve/deny/edit policy| Bridge
     Bridge -->|relays decision back to| Hooks
-    UI --> Collab
-    UI -->|scoped, read-mostly view| Client
 ```
 
 Key property this diagram is meant to enforce: **the bridge only ever
@@ -104,7 +97,6 @@ flowchart TB
         SafetyRuleDetail
         VerifyGatePanel
         PRDMilestoneEditor
-        FreelancerPackageBuilder
         AuditExplorer
         CommandPalette
     end
@@ -112,14 +104,12 @@ flowchart TB
         TimelineCard
         RuleCard
         EvidenceRow
-        ShareOptions
         ApprovalDialog
         InlineDiffExplain
     end
     subgraph Atoms
         DecisionBadge
         EvidenceThumbnail
-        PersonaToggle
         TimestampHashRow
         SmallCTA
     end
@@ -154,8 +144,6 @@ flowchart LR
     Blueprint --> Agents
     Blueprint --> Changelog
     SkillsLibrary --> MCP
-    FreelancerLoop --> PRD
-    FreelancerLoop --> Verify
 ```
 
 ## Explicit non-goals of this architecture
@@ -168,6 +156,6 @@ flowchart LR
   be the *only* way to do something founder-os already supports from the
   terminal.
 - **Not a multi-tenant SaaS backend (yet).** This architecture describes a
-  single founder's local project bridged to a browser tab, plus scoped
-  external share links for Clients/Collaborators — not a hosted,
-  multi-project account system. That would be a separate, later proposal.
+  single Solo Builder's local project bridged to a browser tab — not a
+  hosted, multi-project account system, and not a shared/multi-founder
+  session. That would be a separate, later proposal.

@@ -30,8 +30,12 @@ let this collapse into a five-minute exercise.
    - **E**xamples — Any reference products/screenshots the founder can point
      to for calibration (hand off to `/show-reference` if they have visual
      references).
-   - **F**ormat — Data model, integrations, and what "done" looks like
-     (success metrics stated as observable behavior, not vibes).
+   - **F**ormat — Data model, integrations, what "done" looks like
+     (success metrics stated as observable behavior, not vibes), and
+     compliance scope: what regulated or sensitive data (if any) the
+     product will handle, and which regulations that implies (GDPR, PCI,
+     HIPAA, etc.) — if none apply, that's a valid answer, but it must be
+     stated explicitly rather than left blank.
 
 3. **Push for behavior rules, not feature prose.** For each core feature, ask
    "when the user does X, what exactly happens?" until you have a WHEN/THEN

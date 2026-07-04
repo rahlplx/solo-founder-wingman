@@ -118,13 +118,14 @@ native Claude Code:
   separate `hooks` feature with a wire vocabulary close to Claude Code's,
   but founder-os doesn't build against it yet (see `FAILURE-MODES.md`).
 
-**`skills/` (16), `agents/` (3: `qa-tester`, `code-critic`,
+**`skills/` (17), `agents/` (3: `qa-tester`, `code-critic`,
 `security-reviewer`), `commands/` (5)** — the actual founder-facing
 product surface, installed into a consumer's session via the plugin
 manifest. Implements named frameworks (BRIEF, HIRE, SHOW, LEGO, PLUG,
 PATH, SHIP, LOCK, SEB, 3-Layer Review, 3-3-3, smell-test) plus
-commit-discipline and session-handoff skills. Every skill/agent/command's
-frontmatter and section shape is checked structurally by
+commit-discipline, session-handoff, and existing-project-adoption skills.
+Every skill/agent/command's frontmatter and section shape is checked
+structurally by
 `bin/lint-harness.js` — match the existing shape of its kind when adding
 one.
 

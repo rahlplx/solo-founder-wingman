@@ -1,5 +1,7 @@
 ---
 description: Build a new feature into the existing app without breaking what's already working.
+argument-hint: <feature description>
+allowed-tools: Read, Grep, Glob, Write, Edit, MultiEdit, Bash
 ---
 
 BACKGROUND: I'm building the product described in PRD.md and AGENTS.md.

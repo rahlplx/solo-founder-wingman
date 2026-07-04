@@ -49,6 +49,18 @@ and handle shift swaps — without a phone call.
 - SwapRequests: shift_id, requesting_employee_id, target_employee_id,
   status (pending/approved/denied), reason
 
+## Compliance & Regulatory Scope
+
+- Data handled: employee names and phone numbers (PII), no payment or
+  health data
+- Applicable regulations: none beyond general data-privacy practice for
+  v1 — single-location, US-only launch, no EU users, no payment
+  processing
+- Required disclosures: a basic privacy notice covering what's stored
+  (name, phone) and that it's used only for scheduling/notifications
+- No PCI/GDPR/HIPAA scope for v1 — revisit if the product later adds
+  payroll, expands to EU businesses, or starts processing payments
+
 ## Integrations
 
 - Supabase (database, auth)

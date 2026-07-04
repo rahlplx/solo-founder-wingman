@@ -32,6 +32,7 @@ const REQUIRED_SECTIONS = [
   'Core features',
   'Behavior rules',
   'Data model',
+  'Compliance & Regulatory Scope',
   'Integrations',
   'Success metrics',
   'Explicitly NOT building in this version',

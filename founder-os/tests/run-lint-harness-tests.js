@@ -130,6 +130,47 @@ function main() {
     );
   });
 
+  withTempFile(
+    'commands/__tmp-sparse-command.md',
+    '---\ndescription: a fixture command with no argument-hint or allowed-tools\n---\n\nPROBLEM: $ARGUMENTS\n',
+    () => {
+      const result = runLintHarness();
+      check(
+        'lint-harness: flags a command missing argument-hint',
+        result.status === 1 && result.stdout.includes('commands/__tmp-sparse-command.md: frontmatter has a non-empty argument-hint'),
+        result.stdout
+      );
+      check(
+        'lint-harness: flags a command missing allowed-tools',
+        result.stdout.includes('commands/__tmp-sparse-command.md: frontmatter has a non-empty allowed-tools'),
+        result.stdout
+      );
+    }
+  );
+
+  withTempFile(
+    'commands/__tmp-hyphenated-command.md',
+    '---\ndescription: a fixture command with hyphenated fields filled in\nargument-hint: <some arg>\nallowed-tools: Read, Grep\n---\n\nPROBLEM: $ARGUMENTS\n',
+    () => {
+      const result = runLintHarness();
+      check(
+        'lint-harness: a command with argument-hint/allowed-tools filled in passes those two checks (regression guard for the hyphenated-key frontmatter parser fix)',
+        !result.stdout.includes('commands/__tmp-hyphenated-command.md: frontmatter has a non-empty argument-hint') &&
+          !result.stdout.includes('commands/__tmp-hyphenated-command.md: frontmatter has a non-empty allowed-tools'),
+        result.stdout
+      );
+    }
+  );
+
+  withTempFile('skills/audit-summary/__tmp-extra-file.txt', 'an unexpected extra file\n', () => {
+    const result = runLintHarness();
+    check(
+      'lint-harness: flags a skill directory containing more than just SKILL.md',
+      result.status === 1 && result.stdout.includes('skills/audit-summary: contains only SKILL.md'),
+      result.stdout
+    );
+  });
+
   withPolicyOverride(
     (policy) => {
       policy.rules.push({

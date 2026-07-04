@@ -71,6 +71,10 @@ const VALID_PRD = `# ShiftEase — Product Requirements
 
 - Users: name, email, role
 
+## Compliance & Regulatory Scope
+
+No regulated data handled — no compliance scope for v1.
+
 ## Integrations
 
 Supabase (db/auth)
@@ -127,6 +131,24 @@ function main() {
     check(
       'lint-prd: flags a missing required section',
       result.status === 1 && result.stderr.includes('missing required section: "## Integrations"'),
+      result.stderr
+    );
+  });
+
+  withFixture(VALID_PRD.replace('## Compliance & Regulatory Scope\n\nNo regulated data handled — no compliance scope for v1.\n\n', ''), (prdPath) => {
+    const result = runLintPrd(prdPath);
+    check(
+      'lint-prd: flags a missing Compliance & Regulatory Scope section',
+      result.status === 1 && result.stderr.includes('missing required section: "## Compliance & Regulatory Scope"'),
+      result.stderr
+    );
+  });
+
+  withFixture(VALID_PRD.replace('No regulated data handled — no compliance scope for v1.', ''), (prdPath) => {
+    const result = runLintPrd(prdPath);
+    check(
+      'lint-prd: flags a present-but-empty Compliance & Regulatory Scope section',
+      result.status === 1 && result.stderr.includes('"## Compliance & Regulatory Scope" is present but empty'),
       result.stderr
     );
   });
