@@ -1,5 +1,15 @@
 # User Flows: Personas, Onboarding, and Hybrid Hand-offs
 
+> **Implementation status:** step 4 of "Founder onboarding" below
+> originally described approving a paused action from the browser itself.
+> That was scoped, designed against, and **deliberately rejected** — see
+> `founder-os/DECISIONS.md` and `founder-os/companion/README.md`. The
+> step below now describes what Phase 1 (`founder-os/companion/`, shipped)
+> actually does: a read-only activity feed, with approvals still made in
+> the terminal exactly as before. The rejected design is kept in the
+> "Why not the interactive loop" note at the end of this section as a
+> record of the decision, not as a future roadmap item.
+
 ## Personas
 
 | Persona | Who they are | What they need from the UI |
@@ -27,15 +37,37 @@ persona's action becomes another's task).
    "done" is accepted. Each has a one-line "Why?" and a "Show technical
    detail" reveal (→ branches toward the Hired Collaborator view, but stays
    reversible with a single "Back to plain-English").
-4. **First real approval.** Founder submits a natural-language request via
-   the command bar; the agent proposes an action; a policy rule pauses it;
-   the UI shows a plain-English intervention card ("The agent wants to
-   edit your `.env` file — Approve / Ask again later / Deny"). Approving
-   for the first time is the founder's "aha" moment: safety without having
-   to read a diff.
+4. **First real intervention, seen live.** Founder is working normally in
+   their terminal; the agent proposes an action; a policy rule pauses it;
+   the founder answers `ask`'s prompt in the terminal exactly as they
+   would without the companion server running. Within about a second, a
+   plain-English card for that same decision appears in the browser tab —
+   timestamped, attributed, badge-coded. The "aha" moment is more modest
+   than originally scoped: not "I approved this from my browser," but "I
+   can now see, in plain English, everything my agent has been doing and
+   every time safety stepped in" — a live, readable audit trail, not a
+   new place decisions get made.
 
-**Reads:** `policy.json`, the audit log (read-only), `founder.config.json`.
-**Writes:** founder approval preferences to `founder.config.json`.
+**Why not the interactive loop:** an earlier version of this flow had the
+founder approving the paused action directly from the browser card. That
+was designed against in detail and rejected: any timeout short enough to
+not add a felt delay is too short for a founder to notice a browser tab
+and click in time (so it times out almost every time nobody's already
+watching, which is the common case); any timeout long enough to plausibly
+catch someone's attention adds real, felt latency to every `ask`-triggering
+action whenever nobody's watching — strictly worse than today's immediate
+terminal prompt. It would also turn the hook into something that trusts a
+network response as an authoritative decision, a new local trust boundary,
+and would need strict per-session correlation to avoid one founder-os
+session's pending action being answered by the wrong browser tab. None of
+that is worth building for a feature whose expected value is already near
+zero once the timeout problem is accounted for. See `founder-os/DECISIONS.md`
+and `founder-os/companion/README.md`.
+
+**Reads:** `policy.json`, the audit log (backfill), and the live
+activity stream `founder-os/companion/server.js` relays from both
+adapters via `companion/report-event.js`.
+**Writes:** nothing — Session Overview is read-only, permanently.
 
 ## 2. AI Coding Agent (system persona)
 

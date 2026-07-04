@@ -58,6 +58,44 @@ installed downstream.
 
 ---
 
+## Companion server transport: Server-Sent Events over plain `http`, not WebSocket/`ws`
+
+**Decision:** `companion/server.js`'s live activity stream to the browser
+(the Session Overview screen) uses Server-Sent Events over Node's built-in
+`http` module, not a WebSocket library.
+
+**Why this needed a real decision, not a default:** WebSocket is the more
+familiar default for "stream events to a browser," and a real-time
+bidirectional companion UI is easy to picture eventually needing
+bidirectional messaging. But founder-os ships **zero runtime
+dependencies**, on purpose: `package.json`'s `devDependencies` (`ajv`,
+`tsx`, `typescript`, `@types/node`) are dev tooling for founder-os's own
+CI only, never installed on a founder's machine — the plugin is
+distributed as the raw, git-tracked `founder-os/` directory
+(`marketplace.json`'s `"source": "./founder-os"`), and nothing runs `npm
+install` inside an installed plugin. A `ws` dependency on the hook code
+path (`bin/policy-check.js` → `companion/`) would be this plugin's first
+real runtime dependency, with no existing mechanism to deliver it. That's
+not a minor tradeoff to accept casually; it's currently broken by
+construction.
+
+Phase 1's actual requirement (`audit/companion-ux/` Session Overview) is
+unidirectional — server pushes activity to the browser, nothing flows
+back. Server-Sent Events over plain `http` covers that completely,
+`EventSource` gives auto-reconnect for free, and it needs zero new
+dependencies. Implementing WebSocket's framing by hand was also considered
+and rejected outright — that's exactly the kind of protocol-level code this
+project shouldn't be hand-rolling.
+
+**What would change this decision:** a later phase that's genuinely
+bidirectional (not the browser-side approve/deny loop — see
+`audit/companion-ux/USER-FLOWS.md` for why that was rejected on its own
+merits, independent of transport) would need to revisit this, and should
+re-derive the dependency-delivery problem above rather than reach for
+`ws` by default.
+
+---
+
 ## DECISIONS.md is the tiebreaker
 
 When two files in this repo (a code comment, a README claim, a skill's

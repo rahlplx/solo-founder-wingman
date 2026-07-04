@@ -30,6 +30,7 @@ npm run test:hooks              # bin/verify-gate.sh, bin/doc-sync.sh
 npm run test:settings           # settings.json-driven behavior
 npm run test:redos-guard
 npm run test:audit-log
+npm run test:companion          # companion/ subsystem (event bus, report-event.js, server.js)
 npm run test:repo-scans         # bin/check-js-syntax.js, bin/scan-secrets.js
 npm run test:lint-harness
 npm run test:lint-prd
@@ -42,6 +43,8 @@ npm run scan:secrets            # bin/scan-secrets.js over git-tracked file cont
 npm run lint:harness            # structural health: skill/agent/command frontmatter, policy.json categories
 npm run typecheck:opencode      # tsc --noEmit over adapters/opencode/plugin.ts
 npm run audit:deps              # npm audit
+
+npm run companion:start         # optional local dashboard -- off by default, see companion/README.md
 ```
 
 To run a single test file directly, call it with the runner its
@@ -137,6 +140,22 @@ of policy decisions that actually intervened (ask/deny/block — not plain
 allows, which would drown the signal), plus a plain-English summarizer
 over it, closing the "founder can't read code, so can't see what the
 safety layer actually did" gap.
+
+**`companion/`** — an optional, off-by-default (`settings.json`'s
+`companionEnabled`) local web server: a read-only, live view of policy
+decisions (Session Overview), never spawned by a hook, started manually
+via `npm run companion:start`. Both adapters report every decision (allow
+included, unlike the audit log's interventions-only scope) to it via
+`companion/report-event.js`, awaited with a short bounded timeout so it
+can never meaningfully affect the actual decision or (in
+`bin/policy-check.js`'s case) get killed mid-flight by the immediate
+`process.exit(0)` in `respond()`. Deliberately **read-only forever, not
+just for now** — a browser-driven approve/deny loop was designed and
+rejected (see `audit/companion-ux/USER-FLOWS.md`); the reasoning is a
+structural timeout dilemma and a new trust boundary, not a cut corner.
+Uses Server-Sent Events over plain `http`, not WebSocket/`ws` — see
+`DECISIONS.md` for why (in short: this plugin ships zero runtime
+dependencies today, and a `ws` dependency has no delivery mechanism).
 
 **`tests/`** — one runner per subsystem; `package.json`'s `test:*` scripts
 are the authoritative index of which runner (`node` vs `tsx`) each needs.

@@ -14,43 +14,66 @@ capability founder-os doesn't have today is marked **Dependency**.
 
 ---
 
-## 1. Session Overview (Session Timeline)
+## 1. Session Overview (Session Timeline) — Phase 1 shipped, `founder-os/companion/`
+
+**Status: implemented, read-only, permanently.** The version below is the
+as-shipped Phase 1 spec, revised from the original proposal after a
+dedicated design pass rejected a browser-side approve/deny loop (timeout
+dilemma + new trust boundary — see `founder-os/DECISIONS.md` and
+`founder-os/companion/README.md`). Inline replies, an "Open in CLI"
+per-card action, session hashing, and a pending-approvals panel were all
+part of the original proposal below and are **not implemented** — they
+implied either a control surface or a fidelity guarantee this phase
+doesn't attempt. Treat the "Functional requirements" list below as
+historical/aspirational except where a line is marked **[shipped]**.
 
 **Purpose:** single window into the active CLI/agent session — a
-chronological, plain-English-first feed of every proposed action, policy
-decision, and verify-gate result.
+chronological, plain-English-first feed of every proposed action and
+policy decision.
 **Primary personas:** Founder, Hired Collaborator, Agent (as represented
 actor).
 
 **Layout:** primary content is a vertically scrolling timeline of cards,
-each timestamped and attributed (agent proposed / founder approved /
-collaborator modified). A pending-approvals panel pins urgent interventions
-above the historical feed so they're never buried by scroll.
+each timestamped and attributed. **[shipped, simplified]** Phase 1 has no
+sidebar/header chrome yet (see `COMPONENT-INVENTORY.md`'s note that a
+framework is deferred until a second, genuinely stateful screen exists) —
+just the timeline and a connection-status indicator.
 
 **Functional requirements:**
-- Stream agent actions and policy decisions in real time.
-- Render `policy.json` interventions as actionable Allow/Ask/Deny cards
-  matching the platform's actual decision vocabulary (Claude Code:
-  allow/ask/deny; OpenCode: allow/block only — no ask state to render).
-- Support inline replies that redirect the agent without losing the
-  timeline context of the action being discussed.
-- Provide an "Open in CLI" action per card that jumps a terminal to the
-  exact session line.
+- **[shipped]** Stream agent actions and policy decisions in real time,
+  over Server-Sent Events (`GET /events`), including plain allows — a
+  wider scope than the audit log's interventions-only record.
+- **[shipped]** Render each platform's actual decision vocabulary (Claude
+  Code: allow/ask/deny; OpenCode: allow/block only — no ask state to
+  render).
+- **[shipped]** Backfill history from `bin/audit-log.js` on server
+  startup, honestly labeled as interventions-only (`source:
+  "audit-log-backfill"`), distinct from live events going forward.
+- *Not shipped, not planned:* inline replies to redirect the agent,
+  "Open in CLI" per-card deep links, actionable Allow/Ask/Deny buttons —
+  all implied a control surface this phase deliberately doesn't build.
 
 **Non-functional requirements:**
-- Session-state parity: every card carries a session hash and signed
-  timestamp so the UI's claim of "what happened" is checkable against the
-  CLI's own record.
-- Offline/degraded mode: if the CLI session disconnects, lock all inputs
-  and show a clearly labeled "stale as of [time]" read-only view of the
-  last synced timeline — never silently keep accepting input against a
-  session that isn't there.
+- **[shipped]** Fail-open on the UI's absence: if `founder-os/companion/`
+  isn't running, or `settings.json`'s `companionEnabled` is `false` (the
+  shipped default), `bin/policy-check.js`/`adapters/opencode/plugin.ts`
+  behave byte-for-byte as they do without this feature existing —
+  verified by a dedicated regression test
+  (`tests/run-companion-tests.js`).
+- *Not shipped:* session-hash/signed-timestamp tamper-evidence, and a
+  distinct "stale as of [time]" degraded-mode banner — Phase 1's
+  `EventSource` auto-reconnects and the status indicator shows
+  connected/disconnected, but doesn't yet distinguish "reconnecting" from
+  "stale."
 
-**States:** empty = "no active session" with the CLI start command to
-copy; error = disconnect banner with a reconnect action.
+**States:** **[shipped]** connection status pill (connecting / connected /
+disconnected); empty timeline before any event arrives.
 
-**Reads:** audit log, live session stream, `policy.json`.
-**Writes:** founder approval decisions → `founder.config.json`.
+**Reads:** the audit log (backfill, via `bin/audit-log.js`'s
+`readEntries()`), the live event stream both adapters report via
+`companion/report-event.js`.
+**Writes:** nothing. Read-only, by design, permanently — see the
+"Why not the interactive loop" note in `USER-FLOWS.md`.
 
 ---
 

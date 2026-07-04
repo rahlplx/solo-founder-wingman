@@ -17,6 +17,10 @@
  * same fixture (tests/policy-cases.json) used against the Claude Code
  * adapter through this actual matching logic, to catch drift between the
  * two independent implementations rather than assuming they stay in sync.
+ *
+ * Optionally reports every decision (allow included) to a local companion
+ * server via companion/report-event.js, off by default
+ * (settings.companionEnabled) -- see companion/README.md.
  */
 
 import { readFileSync } from "node:fs";
@@ -27,6 +31,7 @@ import { dirname, join } from "node:path";
 import { validatePolicyDocument } from "../../bin/validate-policy-schema.js";
 import { compileRules, lowercaseStrings, matchRule, buildReason } from "../../core/policy-engine.js";
 import { appendEntry } from "../../bin/audit-log.js";
+import { reportEvent } from "../../companion/report-event.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const POLICY_PATH = join(__dirname, "..", "..", "policy.json");
@@ -35,9 +40,15 @@ const SETTINGS_PATH = join(__dirname, "..", "..", "settings.json");
 interface Settings {
   policyStrictness?: "normal" | "strict";
   explainBeforeAct?: boolean;
+  companionEnabled?: boolean;
+  companionPort?: number;
 }
 
-const SETTINGS_DEFAULTS: Settings = { policyStrictness: "normal", explainBeforeAct: true };
+const SETTINGS_DEFAULTS: Settings = {
+  policyStrictness: "normal",
+  explainBeforeAct: true,
+  companionEnabled: false,
+};
 
 /**
  * Loads settings.json tolerantly: a missing or malformed file falls back
@@ -197,6 +208,19 @@ export const FounderOsPolicy = async () => {
       // throws, so this can't affect the decision either way.
       if (decision === "block") {
         appendEntry({ platform: "opencode", tool: input.tool, decision, ruleId, reason });
+      }
+      // Optional companion server reporting (settings.companionEnabled,
+      // default false) -- see companion/report-event.js. Reports allows
+      // too, a deliberately wider scope than the audit log above. Own
+      // try/catch as defense-in-depth: reportEvent() itself never rejects,
+      // but this guarantees a future change to it still can't turn an
+      // allow into a thrown error here.
+      try {
+        await reportEvent({ platform: "opencode", tool: input.tool, decision, ruleId, reason }, settings);
+      } catch {
+        // unreachable today; see comment above.
+      }
+      if (decision === "block") {
         throw new Error(reason);
       }
     },

@@ -2,5 +2,7 @@
   "policyStrictness": "normal",
   "explainBeforeAct": true,
   "verifyGateOnDone": true,
-  "docSyncOnCommit": true
+  "docSyncOnCommit": true,
+  "companionEnabled": false,
+  "companionPort": 4317
 }

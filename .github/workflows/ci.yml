@@ -90,6 +90,9 @@ jobs:
       - name: Run audit log tests
         working-directory: founder-os
         run: npm run test:audit-log
+      - name: Run companion server tests
+        working-directory: founder-os
+        run: npm run test:companion
       - name: Run repo scan tests (check-js-syntax.js, scan-secrets.js)
         working-directory: founder-os
         run: npm run test:repo-scans

@@ -19,6 +19,11 @@
  * tests/run-policy-tests.js can test the actual matching logic without
  * spawning a process per case, and so this logic has exactly one
  * implementation rather than a copy inside a test file.
+ *
+ * Optionally reports every decision (allow included) to a local companion
+ * server via companion/report-event.js, off by default
+ * (settings.companionEnabled) and never a required link in this hook's
+ * behavior -- see companion/README.md.
  */
 
 const fs = require('fs');
@@ -26,10 +31,11 @@ const path = require('path');
 const { validatePolicyDocument } = require('./validate-policy-schema.js');
 const { compileRules, lowercaseStrings, matchRule, buildReason } = require('../core/policy-engine.js');
 const { appendEntry } = require('./audit-log.js');
+const { reportEvent } = require('../companion/report-event.js');
 
 const POLICY_PATH = path.join(__dirname, '..', 'policy.json');
 const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
-const SETTINGS_DEFAULTS = { policyStrictness: 'normal', explainBeforeAct: true };
+const SETTINGS_DEFAULTS = { policyStrictness: 'normal', explainBeforeAct: true, companionEnabled: false };
 
 /**
  * Loads settings.json tolerantly: a missing or malformed file falls back
@@ -184,6 +190,19 @@ async function main() {
   // appendEntry() is internally best-effort and never throws.
   if (decision !== 'allow') {
     appendEntry({ platform: 'claude-code', tool: payload.tool_name || '', decision, ruleId, reason });
+  }
+  // Optional companion server reporting (settings.companionEnabled,
+  // default false) -- see companion/report-event.js. Reports allows too,
+  // a deliberately wider scope than the audit log above, since the
+  // companion's live view answers "what is the agent doing right now."
+  // Awaited (bounded to a short timeout) rather than fire-and-forget:
+  // respond() below calls process.exit(0) immediately, which would kill
+  // an un-awaited request before its socket write completes.
+  try {
+    await reportEvent({ platform: 'claude-code', tool: payload.tool_name || '', decision, ruleId, reason }, settings);
+  } catch {
+    // reportEvent() itself never rejects; this is defense-in-depth so a
+    // future change to it still can't affect the decision below.
   }
   return respond(decision, reason);
 }
