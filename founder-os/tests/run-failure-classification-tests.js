@@ -77,6 +77,14 @@ function check(description, condition, detail) {
   check('classifyFailure: undefined input does not throw, classifies as unknown/low confidence', result.kind === 'unknown' && result.confidence === 'low', JSON.stringify(result));
 }
 
+// An Error instance -- the single most common real shape a future caller
+// (not just verify-gate.sh's captured-string case) would actually pass --
+// is classified via its .message, not bypassed straight to "unknown".
+{
+  const result = classifyFailure(new Error('Error: connect ECONNREFUSED 127.0.0.1:5432'));
+  check('classifyFailure: an Error instance is classified via its .message, not bypassed to unknown', result.kind === 'network-unreachable' && result.confidence === 'high', JSON.stringify(result));
+}
+
 // Multi-line input: reason is the specific matching line, not the whole blob.
 {
   const multiline = [
