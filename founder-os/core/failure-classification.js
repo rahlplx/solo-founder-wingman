@@ -66,6 +66,9 @@ function matchPatterns(lines, patterns) {
  * specific cause.
  */
 function classifyFailure(message) {
+  if (typeof message !== 'string') {
+    return { kind: 'unknown', reason: String(message), nextStep: 'Read the output below for the specific failure.', confidence: 'low' };
+  }
   const lines = message.split('\n');
   for (const group of ALL_PATTERN_GROUPS) {
     const result = matchPatterns(lines, group);

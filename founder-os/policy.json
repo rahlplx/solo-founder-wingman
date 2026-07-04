@@ -189,7 +189,7 @@
       "id": "secrets-pem-private-key",
       "category": "secrets",
       "scope": "any",
-      "pattern": "-----BEGIN\\s+(RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----",
+      "pattern": "-----BEGIN\\s+(RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----",
       "action": "confirm",
       "message": "A PEM-encoded private key block appears to be present. Confirm this isn't a real, live credential before it's committed or shared.",
       "keywords": ["private key"]

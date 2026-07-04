@@ -65,6 +65,18 @@ function check(description, condition, detail) {
   check('classifyFailure: dash/sh-style "sh: 1: cmd: not found" -> not-found (npm test\'s actual child-shell phrasing on Linux)', result.kind === 'not-found', JSON.stringify(result));
 }
 
+// Defensive: a non-string input (e.g. null/undefined from a caller that
+// didn't validate first) doesn't throw -- classifies as unknown/low
+// confidence instead of crashing on message.split().
+{
+  const result = classifyFailure(null);
+  check('classifyFailure: null input does not throw, classifies as unknown/low confidence', result.kind === 'unknown' && result.confidence === 'low', JSON.stringify(result));
+}
+{
+  const result = classifyFailure(undefined);
+  check('classifyFailure: undefined input does not throw, classifies as unknown/low confidence', result.kind === 'unknown' && result.confidence === 'low', JSON.stringify(result));
+}
+
 // Multi-line input: reason is the specific matching line, not the whole blob.
 {
   const multiline = [
