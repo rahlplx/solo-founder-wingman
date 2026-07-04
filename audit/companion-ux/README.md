@@ -1,12 +1,19 @@
 # Companion UX Proposal: an Enterprise-Grade Web Layer over founder-os
 
-**Status: proposal, not built.** founder-os is CLI/plugin-only today (v0.3.3
-— see `founder-os/README.md`); nothing described in this directory exists
-in code yet. This is design research to evaluate before any implementation
-work starts, kept here for the same reason `OKF_AUDIT.md` and
-`FINAL_REPORT.md` are: a point-in-time proposal, not a description of
-current state (see the repo-root `AGENTS.md`'s note on how to read
-`audit/`).
+**Status: mostly proposal, with one screen now built.** founder-os is
+CLI/plugin-first (v0.3.3 — see `founder-os/README.md`), and everything in
+this directory started as design research to evaluate before any
+implementation work started, kept here for the same reason `OKF_AUDIT.md`
+and `FINAL_REPORT.md` are: a point-in-time proposal, not by default a
+description of current state (see the repo-root `AGENTS.md`'s note on how
+to read `audit/`). **One exception:** Session Overview (`SRS.md`'s screen
+1) has since been implemented as `founder-os/companion/`, read-only, per
+the decisions recorded in `founder-os/DECISIONS.md` — that section of
+`SRS.md`/`USER-FLOWS.md` is marked `[shipped]` inline and describes real,
+current behavior. Every other screen (Safety Center, Verify-Gate Viewer,
+Blueprint, Skills Library, Freelancer Loop Workspace, Command Palette)
+remains proposal-only; don't assume any of them exist in code just because
+Session Overview now does.
 
 ## Where this came from
 

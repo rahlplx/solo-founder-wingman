@@ -14,7 +14,7 @@
 
 | Persona | Who they are | What they need from the UI |
 |---|---|---|
-| **Founder** (primary) | Non-technical solo founder; cannot read code | Plain-English status, PASS/FAIL evidence, a way to say yes/no/wait to a risky action without understanding it at a code level |
+| **Founder** (primary) | Non-technical solo founder; cannot read code | Plain-English status and PASS/FAIL evidence of what the agent is doing and what safety stepped in on, without needing to understand any of it at a code level — approvals themselves still happen in the terminal, not the UI (see "Founder onboarding" below) |
 | **Hired Collaborator** | Freelance developer/technical partner brought on via the `/hire-agent` skill | Raw diffs, full audit log detail, policy rule internals — everything the plain-English view intentionally hides from the Founder |
 | **The AI Coding Agent** | Not a human — a system actor whose proposed actions, policy decisions, and verify-gate runs need a visual, attributable, timestamped representation | To have its actions represented as things that *happened*, not just chat text |
 | **Client / Stakeholder** | External party receiving a packaged deliverable and giving feedback (the Freelancer Loop) | Zero-friction, zero-onboarding access scoped to exactly one deliverable |
@@ -94,18 +94,23 @@ the UI only visualizes what already happened.
    flow). Authenticates into the same project's companion UI, landing on
    a "Developer Handoff" view aggregating `AGENTS.md`, `llms.txt`, and the
    raw diff of any unmerged changes.
-2. **Dev Mode toggle** (persistent, global) — flipping it swaps every
-   plain-English summary in the whole UI for the underlying raw data:
-   exact regex rule IDs, raw JSON audit log entries, full CLI output. This
-   is the single mechanism that lets the Founder and Collaborator share
-   every screen without either being underserved.
+2. **Dev Mode toggle** (scoped to the Collaborator's own authenticated
+   session, not a global setting) — flipping it swaps plain-English
+   summaries for the underlying raw data (exact regex rule IDs, raw JSON
+   audit log entries, full CLI output) *in the Collaborator's own view
+   only*. A global toggle would leak raw diffs, audit entries, and CLI
+   output into the Founder's and Client's views too, defeating the whole
+   point of having separate plain-English and technical surfaces — this
+   has to be a per-session/per-role state, not a shared one.
 3. Any policy exception the Collaborator makes (e.g., temporarily
    permitting an action the Founder's default policy blocks) surfaces back
    to the Founder as a plain-English, undoable card: "Your collaborator
    changed a safety rule for this project — Undo."
 
-**Reads/writes:** `policy.json`, the audit log, `AGENTS.md`, `PRD.md`
-milestones.
+**Reads:** the audit log, `AGENTS.md`, `llms.txt` — `AGENTS.md` is
+canonical repo guidance surfaced for handoff context, not session state
+the UI can mutate.
+**Writes:** `policy.json` (scoped exceptions), `PRD.md` milestones.
 
 ## 4. Client / Stakeholder onboarding
 

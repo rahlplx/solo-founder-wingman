@@ -154,7 +154,9 @@ function testEventBus() {
 
   bus.addEvent({ id: 1 });
   check('event-bus: addEvent grows history', bus.getHistory().length === 1);
-  check('event-bus: getHistory returns a copy, not the live array', bus.getHistory() !== bus.getHistory());
+  const firstCopy = bus.getHistory();
+  const secondCopy = bus.getHistory();
+  check('event-bus: getHistory returns a fresh copy each call, not the live array', firstCopy !== secondCopy);
 
   const received = [];
   const unsubscribe = bus.subscribe((event) => received.push(event));

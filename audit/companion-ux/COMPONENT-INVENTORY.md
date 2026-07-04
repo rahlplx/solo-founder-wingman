@@ -21,7 +21,7 @@ Atomic-design tiering for the screens specified in `SRS.md`. Names follow
 | `RuleCard` | plain-English name + severity + match count | Safety Center's rule list row. |
 | `EvidenceRow` | `EvidenceThumbnail` + plain-English caption + "show raw" link | Used in the Verify-Gate Viewer's evidence gallery. |
 | `ShareOptions` | link generator + invite field + expiry selector | Freelancer Loop Workspace's share step. |
-| `ApprovalDialog` | plain-English reason + Allow/Ask/Deny/Wait actions | The modal every policy intervention resolves through. Must expose "Show technical reason" and must write an audit entry on every resolution. |
+| `ApprovalDialog` | plain-English reason + platform-supported decision actions | The modal every policy intervention resolves through. Must expose "Show technical reason" and must write an audit entry on every resolution. |
 | `InlineDiffExplain` | side-by-side diff + sticky plain-English summary of intent | Lets a Founder approve intent while a Collaborator verifies implementation, without either seeing a degraded view. |
 
 ## Organisms

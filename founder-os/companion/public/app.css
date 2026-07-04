@@ -4,9 +4,17 @@
   --fg: #1a1a1a;
   --muted: #6b7280;
   --border: #e5e7eb;
-  --allow: #16a34a;
-  --ask: #d97706;
-  --deny: #dc2626;
+  /* --allow/--deny are used as text color (.status--connected/
+     .status--disconnected), not just as a border accent, so they need to
+     clear WCAG AA's 4.5:1 text threshold -- not just the 3:1 non-text
+     threshold --border-color usages (.card--allow etc.) would settle for.
+     A single value can't clear 4.5:1 against both a white and a near-black
+     background at once (darkening green for light-mode text contrast
+     actively worsens it against dark-mode's near-black background), so
+     each is overridden per color-scheme below rather than shared. */
+  --allow: #15803d; /* 5.0:1 vs white */
+  --ask: #d97706; /* border-only usage today; already clears the 3:1 non-text threshold both ways */
+  --deny: #dc2626; /* 4.8:1 vs white */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -15,6 +23,8 @@
     --fg: #e5e7eb;
     --muted: #9ca3af;
     --border: #262a33;
+    --allow: #22c55e; /* 8.3:1 vs the dark bg above -- #15803d would only clear 3.8:1 here */
+    --deny: #f87171; /* 6.8:1 vs the dark bg above -- the light-mode #dc2626 only clears 3.9:1 here */
   }
 }
 
