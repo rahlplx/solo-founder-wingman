@@ -135,7 +135,7 @@ function main() {
     );
   });
 
-  withFixture(VALID_PRD.replace('## Compliance & Regulatory Scope\n\nNo regulated data handled — no compliance scope for v1.\n\n', ''), (prdPath) => {
+  withFixture(VALID_PRD.replace(/## Compliance & Regulatory Scope\r?\n\r?\nNo regulated data handled — no compliance scope for v1\.\r?\n\r?\n/, ''), (prdPath) => {
     const result = runLintPrd(prdPath);
     check(
       'lint-prd: flags a missing Compliance & Regulatory Scope section',

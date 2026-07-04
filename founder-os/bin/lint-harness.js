@@ -71,7 +71,10 @@ function lintSkills() {
     check(`skills/${dir.name}: has a SKILL.md`, fs.existsSync(skillPath));
     if (!fs.existsSync(skillPath)) continue;
 
-    const entries = fs.readdirSync(path.join(SKILLS_DIR, dir.name));
+    // Ignore OS/IDE-generated hidden files (.DS_Store, etc.) -- they're
+    // not tracked in git and not this check's concern; a founder browsing
+    // the plugin directory in Finder shouldn't trip a structural lint.
+    const entries = fs.readdirSync(path.join(SKILLS_DIR, dir.name)).filter((f) => !f.startsWith('.'));
     check(
       `skills/${dir.name}: contains only SKILL.md`,
       entries.length === 1 && entries[0] === 'SKILL.md',

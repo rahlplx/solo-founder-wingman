@@ -171,6 +171,15 @@ function main() {
     );
   });
 
+  withTempFile('skills/audit-summary/.DS_Store', 'not real Finder metadata, just a fixture\n', () => {
+    const result = runLintHarness();
+    check(
+      'lint-harness: does NOT flag a skill directory containing only SKILL.md plus an OS-generated hidden file (.DS_Store)',
+      result.status === 0 && !result.stdout.includes('skills/audit-summary: contains only SKILL.md'),
+      result.stdout
+    );
+  });
+
   withPolicyOverride(
     (policy) => {
       policy.rules.push({

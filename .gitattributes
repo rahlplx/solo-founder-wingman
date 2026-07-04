@@ -1,0 +1,6 @@
+# Normalize line endings to LF on checkout, regardless of the cloning
+# machine's own git config (e.g. Windows' common core.autocrlf=true
+# default) -- otherwise a CRLF checkout would silently break test
+# fixtures/tools that match multi-line string content literally (e.g.
+# founder-os/tests/run-lint-prd-tests.js's VALID_PRD.replace() calls).
+* text=auto eol=lf
