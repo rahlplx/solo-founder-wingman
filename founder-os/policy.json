@@ -52,7 +52,7 @@
       "id": "destructive-sql-unscoped-write",
       "category": "destructive_ops",
       "scope": "bash",
-      "pattern": "\\b(DELETE\\s+FROM\\s+\\w+|UPDATE\\s+\\w+\\s+SET)\\b(?!(?:(?!#|;).)*\\bWHERE\\b)",
+      "pattern": "\\b(DELETE\\s+FROM\\s+\\w+|UPDATE\\s+\\w+\\s+SET)\\b(?![^#;\\r\\n]*\\bWHERE\\b)",
       "flags": "i",
       "action": "confirm",
       "message": "This UPDATE/DELETE has no WHERE clause — it will affect every row in the table. Is that intended?",

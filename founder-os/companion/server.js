@@ -49,7 +49,12 @@ const TOKEN_PATH = path.join(__dirname, '.report-token');
  */
 function generateToken() {
   const token = crypto.randomBytes(24).toString('hex');
+  // writeFileSync's `mode` option only takes effect when the file is
+  // actually created -- if TOKEN_PATH survives from an earlier run with
+  // looser permissions, a plain overwrite would leave those permissions in
+  // place. chmodSync afterward guarantees 0600 either way.
   fs.writeFileSync(TOKEN_PATH, token, { mode: 0o600 });
+  fs.chmodSync(TOKEN_PATH, 0o600);
   return token;
 }
 

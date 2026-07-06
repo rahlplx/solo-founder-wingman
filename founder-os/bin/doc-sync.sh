@@ -64,15 +64,16 @@ if [[ "$DOC_SYNC_ON_COMMIT" == "true" && "$COMMAND" == *"git commit"* ]]; then
     DATE="$(date +%Y-%m-%d)"
     TMP="$(mktemp)"
     # Scoped to the [Unreleased] section specifically: `in_unreleased` turns
-    # off the moment the next `## [...]` heading (a past release) is seen,
-    # so a `### Added` belonging to an already-tagged release can never be
+    # off the moment the next second-level heading (a past release, however
+    # it's titled -- "## [0.4.0]", "## 0.4.0", "## v0.4.0") is seen, so a
+    # `### Added` belonging to an already-tagged release can never be
     # mistaken for the one under [Unreleased] -- without this, a file whose
     # [Unreleased] section has no ### Added subsection this cycle (e.g. only
     # ### Fixed) would fall through to the next ### Added anywhere in the
     # file and silently misfile the new entry into a past release.
     if awk -v msg="$MSG" -v date="$DATE" '
       /^## \[Unreleased\]/ { in_unreleased=1; print; next }
-      in_unreleased && /^## \[/ { in_unreleased=0 }
+      in_unreleased && /^## / { in_unreleased=0 }
       in_unreleased && /^### Added$/ && !done { print; print "- " msg " (" date ")"; done=1; next }
       { print }
       END { exit (done ? 0 : 1) }
