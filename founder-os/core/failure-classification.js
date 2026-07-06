@@ -58,20 +58,29 @@ function matchPatterns(lines, patterns) {
 }
 
 /**
- * Classifies a raw error/output string (may be multi-line). Falls through
- * network -> OS -> test-output pattern groups in that order, then a
- * low-confidence "unknown" default -- this is honest, not a forced guess:
- * a failing assertion's message won't match any of these infra-shaped
- * patterns, and saying so plainly (confidence: "low") beats fabricating a
- * specific cause.
+ * Classifies a raw error/output string, an Error instance, or (as a last
+ * resort) anything else -- bin/verify-gate.sh's only caller today always
+ * passes a captured string, but this is a shared, reusable utility, and
+ * an Error object is the single most common real shape a future caller
+ * would actually have on hand. Extracting `.message` rather than
+ * immediately falling back to "unknown" is what makes that caller's
+ * classification still work, instead of silently bypassing every pattern
+ * because the input wasn't literally a string.
+ *
+ * Falls through network -> OS -> test-output pattern groups in that
+ * order, then a low-confidence "unknown" default -- this is honest, not a
+ * forced guess: a failing assertion's message won't match any of these
+ * infra-shaped patterns, and saying so plainly (confidence: "low") beats
+ * fabricating a specific cause.
  */
 function classifyFailure(message) {
-  const lines = message.split('\n');
+  const normalized = message instanceof Error ? message.message : typeof message === 'string' ? message : String(message);
+  const lines = normalized.split('\n');
   for (const group of ALL_PATTERN_GROUPS) {
     const result = matchPatterns(lines, group);
     if (result) return result;
   }
-  const firstNonEmpty = lines.find((l) => l.trim().length > 0) || message;
+  const firstNonEmpty = lines.find((l) => l.trim().length > 0) || normalized;
   return { kind: 'unknown', reason: firstNonEmpty.trim(), nextStep: 'Read the output below for the specific failure.', confidence: 'low' };
 }
 

@@ -55,6 +55,7 @@
     { "description": "an npm access token pasted into a file asks for confirmation", "toolName": "Write", "filePath": ".npmrc", "content": "//registry.npmjs.org/:_authToken=npm_abcdefghijklmnopqrstuvwxyz1234567890", "expectDecision": "ask" },
     { "description": "a Google API key pasted into a file asks for confirmation", "toolName": "Write", "filePath": ".env", "content": "GOOGLE_API_KEY=AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567", "expectDecision": "ask" },
     { "description": "a PEM-encoded private key block pasted into a file asks for confirmation", "toolName": "Write", "filePath": "key.pem", "content": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----", "expectDecision": "ask" },
+    { "description": "a PKCS#8 encrypted private key block also asks for confirmation (regression: ENCRYPTED prefix)", "toolName": "Write", "filePath": "key.pem", "content": "-----BEGIN ENCRYPTED PRIVATE KEY-----\nMIIFHDBOBgkqhkiG9w0BBQ0w...\n-----END ENCRYPTED PRIVATE KEY-----", "expectDecision": "ask" },
     { "description": "an ordinary short 'sk-' prefixed string that isn't actually a key-shaped value is allowed (regression: length floor prevents false positives on short substrings)", "toolName": "Write", "filePath": "notes.md", "content": "sk-8 was our internal codename for the v8 release", "expectDecision": "allow" },
 
     { "description": "creating billed cloud infra asks for confirmation", "toolName": "Bash", "command": "aws ec2 create-instance --instance-type p4d.24xlarge", "expectDecision": "ask" },

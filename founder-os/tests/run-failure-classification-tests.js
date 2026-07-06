@@ -65,6 +65,26 @@ function check(description, condition, detail) {
   check('classifyFailure: dash/sh-style "sh: 1: cmd: not found" -> not-found (npm test\'s actual child-shell phrasing on Linux)', result.kind === 'not-found', JSON.stringify(result));
 }
 
+// Defensive: a non-string input (e.g. null/undefined from a caller that
+// didn't validate first) doesn't throw -- classifies as unknown/low
+// confidence instead of crashing on message.split().
+{
+  const result = classifyFailure(null);
+  check('classifyFailure: null input does not throw, classifies as unknown/low confidence', result.kind === 'unknown' && result.confidence === 'low', JSON.stringify(result));
+}
+{
+  const result = classifyFailure(undefined);
+  check('classifyFailure: undefined input does not throw, classifies as unknown/low confidence', result.kind === 'unknown' && result.confidence === 'low', JSON.stringify(result));
+}
+
+// An Error instance -- the single most common real shape a future caller
+// (not just verify-gate.sh's captured-string case) would actually pass --
+// is classified via its .message, not bypassed straight to "unknown".
+{
+  const result = classifyFailure(new Error('Error: connect ECONNREFUSED 127.0.0.1:5432'));
+  check('classifyFailure: an Error instance is classified via its .message, not bypassed to unknown', result.kind === 'network-unreachable' && result.confidence === 'high', JSON.stringify(result));
+}
+
 // Multi-line input: reason is the specific matching line, not the whole blob.
 {
   const multiline = [
