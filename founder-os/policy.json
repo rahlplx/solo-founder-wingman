@@ -6,7 +6,7 @@
       "id": "destructive-rm-rf",
       "category": "destructive_ops",
       "scope": "bash",
-      "pattern": "\\brm\\b(?=.*(?:^|\\s)(-[a-zA-Z]*[rR][a-zA-Z]*\\b|--recursive\\b))(?=.*(?:^|\\s)(-[a-zA-Z]*f[a-zA-Z]*\\b|--force\\b))",
+      "pattern": "\\brm\\b(?=[^;&|`\\r\\n]*(?:^|\\s)(-[a-zA-Z]*[rR][a-zA-Z]*\\b|--recursive\\b))(?=[^;&|`\\r\\n]*(?:^|\\s)(-[a-zA-Z]*f[a-zA-Z]*\\b|--force\\b))",
       "action": "block",
       "message": "This deletes files/folders permanently with no undo. What exactly is being deleted and why?",
       "keywords": ["rm"]
@@ -52,7 +52,7 @@
       "id": "destructive-sql-unscoped-write",
       "category": "destructive_ops",
       "scope": "bash",
-      "pattern": "\\b(DELETE\\s+FROM\\s+\\w+|UPDATE\\s+\\w+\\s+SET)\\b(?!.*\\bWHERE\\b)",
+      "pattern": "\\b(DELETE\\s+FROM\\s+\\w+|UPDATE\\s+\\w+\\s+SET)\\b(?![^#;\\r\\n]*\\bWHERE\\b)",
       "flags": "i",
       "action": "confirm",
       "message": "This UPDATE/DELETE has no WHERE clause — it will affect every row in the table. Is that intended?",

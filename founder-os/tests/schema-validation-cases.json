@@ -143,6 +143,36 @@
       }
     },
     {
+      "description": "flags contains g (disallowed: would make cached-RegExp matching stateful)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-flags-global", "category": "test", "pattern": "\\bdanger\\b", "flags": "g", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "flags contains y (disallowed: would make cached-RegExp matching stateful)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-flags-sticky", "category": "test", "pattern": "\\bdanger\\b", "flags": "y", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "rule has an unknown field (regression: a typo'd field name like \"keywrods\" used to pass silently)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "typo-field", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example", "keywrods": ["danger"] }
+        ]
+      }
+    },
+    {
       "description": "keywords is a string instead of an array",
       "expectValid": false,
       "doc": {

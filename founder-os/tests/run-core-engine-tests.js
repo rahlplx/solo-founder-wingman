@@ -100,6 +100,22 @@ function rule(overrides) {
   check('matchRule: returns the first matching rule when multiple would match', matched.id === 'first');
 }
 
+// matchRule: defense-in-depth against a stateful g/y-flagged rule (schema
+// validation disallows these, but matchRule must not itself depend on that
+// -- a rule's compiled RegExp is cached and reused across calls, so without
+// resetting lastIndex a "g"/"y" flag would make repeated calls against the
+// same input alternate match/no-match instead of being a pure per-string check).
+{
+  const compiled = compileRules([rule({ id: 'stateful', pattern: '\\bdanger\\b', flags: 'g' })]);
+  const strings = lowercaseStrings([{ value: 'danger', origin: 'bash' }]);
+  const results = [matchRule(compiled, strings), matchRule(compiled, strings), matchRule(compiled, strings)];
+  check(
+    'matchRule: a global-flagged rule matches consistently across repeated calls against the same input, not alternating',
+    results.every((r) => r !== null && r.id === 'stateful'),
+    JSON.stringify(results.map((r) => r && r.id))
+  );
+}
+
 // buildReason: explainBeforeAct toggle.
 {
   const r = rule({ id: 'x', message: 'full message here' });

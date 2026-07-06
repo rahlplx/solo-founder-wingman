@@ -90,6 +90,12 @@ function matchRule(compiledRules, checkableStrings) {
       if (rule.keywords) {
         if (!rule.keywords.some((k) => lowerValue.includes(k))) continue;
       }
+      // Defense-in-depth: schema/policy.schema.json disallows g/y flags so
+      // this should never matter in practice, but re is cached and reused
+      // across calls (see compileRules above) -- resetting lastIndex here
+      // keeps .test() a pure per-string check even if a rule ever slipped
+      // past validation with a stateful flag.
+      rule.re.lastIndex = 0;
       if (rule.re.test(value)) {
         return rule;
       }

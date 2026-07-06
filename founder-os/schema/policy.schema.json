@@ -40,7 +40,8 @@
         },
         "flags": {
           "type": "string",
-          "pattern": "^[gimsuy]*$"
+          "description": "g/y are deliberately excluded: matchRule() only ever calls .test() for existence, and core/policy-engine.js caches compiled RegExp objects across calls, so a global/sticky flag would make matches stateful (alternating true/false across identical inputs via lastIndex) instead of a pure per-string check.",
+          "pattern": "^[imsu]*$"
         },
         "action": {
           "type": "string",

@@ -15,9 +15,19 @@
  * adapters/opencode/plugin.ts's decisions are finalized before
  * report-event.js's reportEvent() call ever reaches here. There is no
  * endpoint here that accepts a decision back, on purpose.
+ *
+ * POST /report requires a shared-secret token (see generateToken() below)
+ * because binding to 127.0.0.1 only keeps this off the network, not off
+ * the local machine -- without a token, any other local process, or any
+ * page open in the founder's own browser, could POST a fabricated event
+ * via a same-origin-safelisted fetch() and no CORS preflight, undermining
+ * the one property this dashboard exists for (a trustworthy record of
+ * what the policy engine actually decided). report-event.js reads the
+ * same token file to authenticate its real reports.
  */
 
 const http = require('http');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -27,6 +37,34 @@ const { DEFAULT_PORT } = require('./report-event.js');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
+const TOKEN_PATH = path.join(__dirname, '.report-token');
+
+/**
+ * Generates a fresh token on every server start and persists it to disk
+ * (mode 0600) so report-event.js -- running in a separate, later process,
+ * e.g. bin/policy-check.js invoked per hook call -- can read the same
+ * value. Regenerating on each start (rather than reusing a stale file) is
+ * deliberate: a leftover token from a previous, now-dead server should
+ * never authenticate against a new one.
+ */
+function generateToken() {
+  const token = crypto.randomBytes(24).toString('hex');
+  // writeFileSync's `mode` option only takes effect when the file is
+  // actually created -- if TOKEN_PATH survives from an earlier run with
+  // looser permissions, a plain overwrite would leave those permissions in
+  // place. chmodSync afterward guarantees 0600 either way.
+  fs.writeFileSync(TOKEN_PATH, token, { mode: 0o600 });
+  fs.chmodSync(TOKEN_PATH, 0o600);
+  return token;
+}
+
+function isAuthorized(req, token) {
+  const provided = req.headers['x-founder-os-token'];
+  if (typeof provided !== 'string' || provided.length === 0) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(token);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -77,12 +115,30 @@ function serveStatic(req, res) {
   });
 }
 
-function handleEvents(req, res, bus) {
+// A generous ceiling for how many browser tabs/EventSource connections one
+// founder could plausibly have open at once -- not a real usage limit, just
+// a backstop against unbounded socket/fd growth from a runaway or malicious
+// number of concurrent /events connections.
+const MAX_SSE_CLIENTS = 50;
+
+function handleEvents(req, res, bus, sseClients) {
+  if (sseClients.size >= MAX_SSE_CLIENTS) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: `too many concurrent /events connections (max ${MAX_SSE_CLIENTS})` }));
+    return;
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
   });
+  // Node batches headers with the first res.write() rather than sending
+  // them immediately on writeHead() -- with an empty event bus (a fresh
+  // server, nothing reported yet), that first write might not happen for a
+  // long time, leaving a subscriber's client hanging with no response at
+  // all. flushHeaders() sends them right away regardless of body content.
+  res.flushHeaders();
 
   const send = (event) => {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -90,28 +146,90 @@ function handleEvents(req, res, bus) {
   for (const event of bus.getHistory()) send(event);
 
   const unsubscribe = bus.subscribe(send);
-  req.on('close', unsubscribe);
+  sseClients.add(res);
+  req.on('close', () => {
+    unsubscribe();
+    sseClients.delete(res);
+  });
 }
 
-function readBody(req) {
+// Generous for a single policy-decision event ({ platform, tool, decision,
+// ruleId, reason, timestamp } -- see report-event.js), but bounded so an
+// arbitrarily large POST (accidental or otherwise) can't grow memory
+// unbounded or block the event loop parsing a huge string.
+const MAX_REPORT_BODY_BYTES = 16 * 1024;
+
+function readBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     let data = '';
+    let bytes = 0;
+    let rejected = false;
     req.setEncoding('utf8');
-    req.on('data', (chunk) => (data += chunk));
-    req.on('end', () => resolve(data));
+    req.on('data', (chunk) => {
+      // Deliberately does not req.destroy() here -- req and res share the
+      // same underlying socket, so destroying it would also prevent the
+      // 413 response below from ever reaching the client (a raw connection
+      // reset instead of a real HTTP response). Draining the remaining
+      // bytes without buffering them keeps memory bounded while still
+      // letting the request complete normally so the response can be sent.
+      if (rejected) return;
+      bytes += Buffer.byteLength(chunk);
+      if (bytes > maxBytes) {
+        rejected = true;
+        reject(Object.assign(new Error(`request body exceeds ${maxBytes} bytes`), { statusCode: 413 }));
+        return;
+      }
+      data += chunk;
+    });
+    req.on('end', () => {
+      if (!rejected) resolve(data);
+    });
     req.on('error', reject);
   });
 }
 
-async function handleReport(req, res, bus) {
+// Only server-side backfill() (from bin/audit-log.js's durable,
+// interventions-only log) may tag an event as "audit-log-backfill" -- the
+// frontend uses that tag to honestly caveat provenance (backfilled history
+// is narrower-fidelity than live events). Without rejecting a
+// client-submitted "source" field, a POST could impersonate that tag.
+const RESERVED_EVENT_FIELDS = ['source'];
+
+function validateEvent(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return 'event must be a JSON object';
+  }
+  for (const field of RESERVED_EVENT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(entry, field)) {
+      return `event must not set reserved field "${field}"`;
+    }
+  }
+  if (typeof entry.platform !== 'string' || typeof entry.tool !== 'string' || typeof entry.decision !== 'string') {
+    return 'event must have string "platform", "tool", and "decision" fields';
+  }
+  return null;
+}
+
+async function handleReport(req, res, bus, token) {
+  if (!isAuthorized(req, token)) {
+    res.writeHead(401);
+    res.end(JSON.stringify({ error: 'missing or invalid X-Founder-Os-Token' }));
+    return;
+  }
   try {
-    const raw = await readBody(req);
+    const raw = await readBody(req, MAX_REPORT_BODY_BYTES);
     const entry = JSON.parse(raw);
+    const validationError = validateEvent(entry);
+    if (validationError) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: validationError }));
+      return;
+    }
     bus.addEvent(entry);
     res.writeHead(204);
     res.end();
   } catch (err) {
-    res.writeHead(400);
+    res.writeHead(err.statusCode || 400);
     res.end(JSON.stringify({ error: err.message }));
   }
 }
@@ -124,16 +242,18 @@ async function handleReport(req, res, bus) {
 function createServer() {
   const bus = createEventBus();
   backfill(bus);
+  const token = generateToken();
+  const sseClients = new Set();
 
   const server = http.createServer((req, res) => {
-    if (req.method === 'GET' && req.url === '/events') return handleEvents(req, res, bus);
-    if (req.method === 'POST' && req.url === '/report') return handleReport(req, res, bus);
+    if (req.method === 'GET' && req.url === '/events') return handleEvents(req, res, bus, sseClients);
+    if (req.method === 'POST' && req.url === '/report') return handleReport(req, res, bus, token);
     if (req.method === 'GET') return serveStatic(req, res);
     res.writeHead(405);
     res.end('Method not allowed');
   });
 
-  return { server, bus };
+  return { server, bus, token };
 }
 
 if (require.main === module) {
@@ -157,4 +277,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer };
+module.exports = { createServer, MAX_SSE_CLIENTS, MAX_REPORT_BODY_BYTES };

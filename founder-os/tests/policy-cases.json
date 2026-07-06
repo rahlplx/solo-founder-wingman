@@ -11,6 +11,8 @@
     { "description": "rm --force of a single file (not recursive) is allowed (regression: prior anchoring bug blocked this)", "toolName": "Bash", "command": "rm --force singlefile.txt", "expectDecision": "allow" },
     { "description": "a command merely containing the substring 'rm' inside another word plus --force is allowed (regression: 'confirm' was previously mistaken for 'rm')", "toolName": "Bash", "command": "npm run deploy --confirm --force", "expectDecision": "allow" },
     { "description": "another 'confirm' + '--force' combination unrelated to rm is allowed", "toolName": "Bash", "command": "gh pr merge --auto --confirm --force", "expectDecision": "allow" },
+    { "description": "single-file rm followed by an unrelated semicolon-separated -rf flag combination is allowed (regression: prior false positive from unscoped flag lookahead)", "toolName": "Bash", "command": "rm foo.txt; grep -rf pattern file", "expectDecision": "allow" },
+    { "description": "a genuinely dangerous rm -rf hidden after a semicolon is still blocked", "toolName": "Bash", "command": "echo hello; rm -rf /", "expectDecision": "deny" },
 
     { "description": "git push --force blocks", "toolName": "Bash", "command": "git push --force origin main", "expectDecision": "deny" },
     { "description": "git push --force-with-lease is allowed", "toolName": "Bash", "command": "git push --force-with-lease origin main", "expectDecision": "allow" },
@@ -26,6 +28,9 @@
     { "description": "unscoped DELETE FROM without WHERE asks for confirmation", "toolName": "Bash", "command": "psql -c \"DELETE FROM users\"", "expectDecision": "ask" },
     { "description": "scoped UPDATE with WHERE is allowed", "toolName": "Bash", "command": "psql -c \"UPDATE users SET admin = true WHERE id = 5\"", "expectDecision": "allow" },
     { "description": "scoped DELETE with WHERE is allowed", "toolName": "Bash", "command": "psql -c \"DELETE FROM users WHERE id = 5\"", "expectDecision": "allow" },
+    { "description": "unscoped DELETE followed by a trailing comment mentioning WHERE still asks (regression: prior bypass via unrelated trailing text)", "toolName": "Bash", "command": "psql -c \"DELETE FROM users\" # see WHERE clause docs for other tables", "expectDecision": "ask" },
+    { "description": "unscoped UPDATE followed by a semicolon-separated command mentioning where still asks (regression: prior bypass via unrelated trailing text)", "toolName": "Bash", "command": "psql -c \"UPDATE users SET admin = true\"; echo where are my files", "expectDecision": "ask" },
+    { "description": "scoped DELETE with WHERE before a trailing comment is still allowed", "toolName": "Bash", "command": "psql -c \"DELETE FROM users WHERE id = 5\" # cleanup", "expectDecision": "allow" },
 
     { "description": "terraform destroy blocks", "toolName": "Bash", "command": "terraform destroy -auto-approve", "expectDecision": "deny" },
     { "description": "kubectl delete namespace asks for confirmation", "toolName": "Bash", "command": "kubectl delete namespace staging", "expectDecision": "ask" },
@@ -87,6 +92,7 @@
     { "description": "MultiEdit hiding a destructive bash-looking string only in file content is allowed (scope fix: bash-only rules don't apply to file edits)", "toolName": "MultiEdit", "filePath": "notes.md", "edits": [{ "old_string": "old", "new_string": "example: rm -rf / is dangerous" }], "expectDecision": "allow" },
     { "description": "MultiEdit is covered by the policy hook matcher at all (regression: matcher previously only listed Edit|Write)", "toolName": "MultiEdit", "filePath": ".env", "edits": [{ "old_string": "x", "new_string": "y" }], "platforms": ["claude-code"], "expectDecision": "allow" },
 
-    { "description": "apply_patch payloads are inspected via patchText, not ignored (regression: extractCheckableStrings previously only checked bash/edit/write)", "toolName": "ApplyPatch", "patchText": "*** Begin Patch\n*** Update File: config.js\n-const key = 'sk_test_x';\n+const key = 'sk_live_51ABCDEFGHIJ';\n*** End Patch", "platforms": ["opencode"], "expectDecision": "ask" }
+    { "description": "apply_patch payloads are inspected via patchText, not ignored (regression: extractCheckableStrings previously only checked bash/edit/write)", "toolName": "ApplyPatch", "patchText": "*** Begin Patch\n*** Update File: config.js\n-const key = 'sk_test_x';\n+const key = 'sk_live_51ABCDEFGHIJ';\n*** End Patch", "platforms": ["opencode"], "expectDecision": "ask" },
+    { "description": "a native 'patch' tool's diff payload is also inspected, not just 'apply_patch' (hardening: unverified tool-name/field assumption, see FAILURE-MODES.md #30)", "toolName": "NativePatch", "diff": "--- a/config.js\n+++ b/config.js\n-const key = 'sk_test_x';\n+const key = 'sk_live_51ABCDEFGHIJ';", "platforms": ["opencode"], "expectDecision": "ask" }
   ]
 }

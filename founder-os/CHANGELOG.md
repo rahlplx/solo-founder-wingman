@@ -68,8 +68,74 @@ what a command expects) bump the **major** version.
 
 
 ### Fixed
+- `policy.json`'s `destructive-sql-unscoped-write` rule: the negative
+  lookahead scanned the entire rest of the command string for the literal
+  word "WHERE" instead of stopping at a `#` comment or `;` statement
+  boundary, so a genuinely unscoped `DELETE`/`UPDATE` with unrelated
+  trailing text mentioning "where" (e.g. a shell comment) silently
+  skipped the confirmation.
+- `policy.json`'s `destructive-rm-rf` rule: flag lookaheads scanned the
+  entire command string for an r-ish/f-ish flag regardless of whether
+  they belonged to `rm`'s own arguments, so e.g.
+  `rm foo.txt; grep -rf pattern file` incorrectly blocked.
+- `core/policy-engine.js`: `matchRule`'s cached, reused `RegExp` objects
+  would have made a rule with a `g`/`y` flag alternate match/no-match
+  across calls via `lastIndex` state (no rule uses one today, but nothing
+  stopped it). `g`/`y` are now disallowed at the schema level
+  (`schema/policy.schema.json` + both validators), plus a defensive
+  `lastIndex` reset in `matchRule` as a backstop.
+- `bin/validate-policy-schema.js` (the hand-rolled validator actually
+  wired into both adapters): didn't reject unknown/extra rule fields,
+  unlike `schema/policy.schema.json`'s `additionalProperties:false` and
+  the ajv reference validator — a typo'd field name (e.g. `keywrods`)
+  silently passed instead of failing loudly.
+- `bin/doc-sync.sh`: could silently append a new changelog entry into an
+  already-released version's `### Added` section instead of
+  `[Unreleased]`'s, if the latter had no `### Added` subsection of its
+  own that cycle. Section-boundary tracking is now scoped strictly to
+  `[Unreleased]`.
+- `bin/doc-sync.sh`: a commit-identity race — driven only by "command
+  text contains `git commit`" plus a 10-second age window — could
+  duplicate or drop changelog entries (an unrelated command merely
+  containing that substring re-appended an already-synced commit; two
+  rapid commits could resolve to the same `git log -1` HEAD). Now keyed
+  off the actual HEAD SHA, with a small non-blocking lock around the
+  read-modify-write.
+- `bin/doc-sync.sh`: `awk -v`'s backslash-escape processing could mangle
+  a commit subject containing a literal backslash (a Windows path, a
+  literal `\n`/`\t`) into real control characters. The message/date are
+  now passed via `ENVIRON[]` instead of `-v`.
+- `adapters/opencode/plugin.ts`: `extractCheckableStrings`'s `apply_patch`
+  handling was a single hardcoded tool name/field, never verified live
+  against a real OpenCode session unlike every other cross-adapter claim
+  in this repo. Widened defensively to also check a `patch` tool name and
+  `patch`/`diff`/`input` fields; residual verification gap tracked as
+  `FAILURE-MODES.md` #30.
+- `companion/server.js`: `POST /report` had no request-body size cap and
+  accepted any parseable JSON, including a spoofed `source` field
+  impersonating the audit-log-backfill provenance tag the UI relies on;
+  `GET /events` had no cap on concurrent subscribers. All three are now
+  bounded.
+- `companion/server.js`'s `GET /events`: never flushed response headers
+  until the first event was written, so a subscriber connecting to a
+  server with genuinely empty history (nothing reported or backfilled
+  yet) hung forever waiting for a response.
+- `.github/workflows/ci.yml` / `scripts/local-ci`: only the `policy-tests`
+  job's script list was drift-checked against `scripts/local-ci`; the
+  `validate-json` job's file list and the `shellcheck` job's target
+  directory were hand-duplicated with nothing catching drift, notable
+  since local-ci is the real merge gate while GitHub Actions can't
+  allocate runners. Both now read from a single shared
+  `scripts/local-ci/jobs.json` at runtime instead of being duplicated.
 
 ### Security
+- `companion/server.js`'s `POST /report` had no auth or origin check, so
+  any local process — or any page open in the founder's own browser, via
+  a same-origin-safelisted `fetch()` with no CORS preflight — could spoof
+  a policy-decision event into the dashboard, undermining the one
+  property it exists for (a trustworthy record of what the policy engine
+  actually decided). Now requires a per-run shared-secret token, written
+  to a gitignored, mode-0600 file that `report-event.js` reads.
 
 ## [0.4.0] - 2026-07-04
 

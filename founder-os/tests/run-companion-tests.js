@@ -19,7 +19,7 @@ const path = require('path');
 
 const { createEventBus, MAX_HISTORY } = require('../companion/event-bus.js');
 const { reportEvent } = require('../companion/report-event.js');
-const { createServer } = require('../companion/server.js');
+const { createServer, MAX_SSE_CLIENTS, MAX_REPORT_BODY_BYTES } = require('../companion/server.js');
 const AUDIT_LOG = require('../bin/audit-log.js');
 
 const LOG_PATH = AUDIT_LOG.LOG_PATH;
@@ -86,7 +86,7 @@ function getFreePort() {
   });
 }
 
-function httpRequestJson(port, method, urlPath, body) {
+function httpRequestJson(port, method, urlPath, body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : undefined;
     const req = http.request(
@@ -95,7 +95,10 @@ function httpRequestJson(port, method, urlPath, body) {
         port,
         path: urlPath,
         method,
-        headers: data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
+        headers: {
+          ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
+          ...extraHeaders,
+        },
       },
       (res) => {
         let chunks = '';
@@ -106,6 +109,43 @@ function httpRequestJson(port, method, urlPath, body) {
     req.on('error', reject);
     if (data) req.write(data);
     req.end();
+  });
+}
+
+/** Sends a raw request body verbatim (no JSON.stringify), for testing
+ * oversized-body rejection without needing a genuinely huge JS object. */
+function httpRequestRaw(port, method, urlPath, rawBody, extraHeaders = {}) {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        host: '127.0.0.1',
+        port,
+        path: urlPath,
+        method,
+        headers: { 'Content-Length': Buffer.byteLength(rawBody), ...extraHeaders },
+      },
+      (res) => {
+        let chunks = '';
+        res.on('data', (c) => (chunks += c));
+        res.on('end', () => resolve({ status: res.statusCode, body: chunks }));
+      }
+    );
+    req.on('error', reject);
+    req.write(rawBody);
+    req.end();
+  });
+}
+
+/** Opens a GET /events connection and resolves once the response headers
+ * arrive, without reading or closing it -- lets a test hold N connections
+ * open simultaneously to exercise the concurrent-subscriber cap. */
+function openSseConnection(port) {
+  return new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/events' }, (res) => {
+      res.resume(); // drain so the socket doesn't back up; we don't need the data
+      resolve({ req, res });
+    });
+    req.on('error', reject);
   });
 }
 
@@ -246,16 +286,97 @@ async function testServerBackfillFromAuditLog() {
   });
 }
 
+// Regression: GET /events on a server with genuinely empty history (fresh
+// server, nothing reported or backfilled yet) must respond immediately --
+// found while adding the concurrent-subscriber cap above. res.writeHead()
+// alone doesn't flush headers to the client; Node normally batches them
+// with the first res.write(), which never happens if there's no history
+// to replay and no event has landed yet. Guarded with a bounded race
+// rather than a bare await so a regression fails this test instead of
+// hanging the whole suite.
+async function testEventsRespondsWithEmptyHistory() {
+  await withCleanLog(async () => {
+    const port = await getFreePort();
+    const { server } = createServer();
+    await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
+    let conn;
+    try {
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timed out')), 2000));
+      conn = await Promise.race([openSseConnection(port), timeout]);
+      check('server: GET /events responds immediately even with empty history', conn.res.statusCode === 200, conn.res.statusCode);
+    } catch (err) {
+      check('server: GET /events responds immediately even with empty history', false, err.message);
+    } finally {
+      if (conn) conn.req.destroy();
+      server.close();
+    }
+  });
+}
+
 async function testServerHttpEndpoints() {
   const port = await getFreePort();
-  const { server } = createServer();
+  const { server, token } = createServer();
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   try {
-    const reportRes = await httpRequestJson(port, 'POST', '/report', { platform: 'claude-code', tool: 'Bash', decision: 'ask', reason: 'test' });
-    check('server: POST /report accepts a well-formed event', reportRes.status === 204, JSON.stringify(reportRes));
+    const noTokenRes = await httpRequestJson(port, 'POST', '/report', { platform: 'claude-code', tool: 'Bash', decision: 'ask' });
+    check('server: POST /report with no token responds 401', noTokenRes.status === 401, JSON.stringify(noTokenRes));
 
-    const badReportRes = await httpRequestJson(port, 'POST', '/report', undefined);
+    const wrongTokenRes = await httpRequestJson(
+      port,
+      'POST',
+      '/report',
+      { platform: 'claude-code', tool: 'Bash', decision: 'ask' },
+      { 'X-Founder-Os-Token': 'not-the-real-token' }
+    );
+    check('server: POST /report with a wrong token responds 401', wrongTokenRes.status === 401, JSON.stringify(wrongTokenRes));
+
+    const reportRes = await httpRequestJson(
+      port,
+      'POST',
+      '/report',
+      { platform: 'claude-code', tool: 'Bash', decision: 'ask', reason: 'test' },
+      { 'X-Founder-Os-Token': token }
+    );
+    check('server: POST /report with the correct token accepts a well-formed event', reportRes.status === 204, JSON.stringify(reportRes));
+
+    const badReportRes = await httpRequestJson(port, 'POST', '/report', undefined, { 'X-Founder-Os-Token': token });
     check('server: POST /report with no body responds 400 rather than crashing', badReportRes.status === 400, JSON.stringify(badReportRes));
+
+    const spoofedSourceRes = await httpRequestJson(
+      port,
+      'POST',
+      '/report',
+      { platform: 'claude-code', tool: 'Bash', decision: 'allow', source: 'audit-log-backfill' },
+      { 'X-Founder-Os-Token': token }
+    );
+    check(
+      'server: POST /report cannot spoof the "source" field the UI uses to signal backfilled provenance',
+      spoofedSourceRes.status === 400,
+      JSON.stringify(spoofedSourceRes)
+    );
+
+    const missingFieldsRes = await httpRequestJson(port, 'POST', '/report', { decision: 'allow' }, { 'X-Founder-Os-Token': token });
+    check(
+      'server: POST /report rejects an event missing required string fields',
+      missingFieldsRes.status === 400,
+      JSON.stringify(missingFieldsRes)
+    );
+
+    const oversizedBody = JSON.stringify({
+      platform: 'claude-code',
+      tool: 'Bash',
+      decision: 'allow',
+      reason: 'x'.repeat(MAX_REPORT_BODY_BYTES + 1),
+    });
+    const oversizedRes = await httpRequestRaw(port, 'POST', '/report', oversizedBody, {
+      'X-Founder-Os-Token': token,
+      'Content-Type': 'application/json',
+    });
+    check(
+      'server: POST /report rejects a body over the size cap with 413',
+      oversizedRes.status === 413,
+      JSON.stringify(oversizedRes)
+    );
 
     const events = await readSseEvents(port, { waitMs: 200 });
     check(
@@ -267,6 +388,35 @@ async function testServerHttpEndpoints() {
     const indexRes = await httpRequestJson(port, 'GET', '/', undefined);
     check('server: GET / serves the static frontend', indexRes.status === 200 && indexRes.body.includes('Session Overview'), indexRes.body.slice(0, 80));
   } finally {
+    server.close();
+  }
+}
+
+async function testSseSubscriberCap() {
+  const port = await getFreePort();
+  const { server } = createServer();
+  await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
+  const opened = [];
+  try {
+    for (let i = 0; i < MAX_SSE_CLIENTS; i++) {
+      opened.push(await openSseConnection(port));
+    }
+    const allAccepted = opened.every(({ res }) => res.statusCode === 200);
+    check(
+      'server: GET /events accepts connections up to the concurrent-subscriber cap',
+      allAccepted,
+      JSON.stringify(opened.map(({ res }) => res.statusCode))
+    );
+
+    const overCap = await openSseConnection(port);
+    opened.push(overCap);
+    check(
+      'server: GET /events rejects a connection beyond the concurrent-subscriber cap with 503',
+      overCap.res.statusCode === 503,
+      overCap.res.statusCode
+    );
+  } finally {
+    for (const { req } of opened) req.destroy();
     server.close();
   }
 }
@@ -309,7 +459,9 @@ async function main() {
   await testReportEventEnabledButUnreachableResolvesQuickly();
   await testReportEventEnabledWithRealServer();
   await testServerBackfillFromAuditLog();
+  await testEventsRespondsWithEmptyHistory();
   await testServerHttpEndpoints();
+  await testSseSubscriberCap();
   await testPolicyCheckUnaffectedWhenCompanionUnreachable();
 
   console.log(`Companion server tests (event-bus.js, report-event.js, server.js): ${pass} passed, ${fail} failed, ${pass + fail} total`);
