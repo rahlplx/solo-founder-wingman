@@ -18,9 +18,27 @@
  */
 
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const DEFAULT_PORT = 4317;
 const TIMEOUT_MS = 200;
+const TOKEN_PATH = path.join(__dirname, '.report-token');
+
+/**
+ * Reads the token server.js's generateToken() wrote on startup. Missing
+ * (server never started, or started after this read) just means the
+ * request goes out without the header -- the server will then reject it
+ * with 401, which is fine: this function ignores the response status
+ * either way, matching the "never affects the actual decision" contract.
+ */
+function readToken() {
+  try {
+    return fs.readFileSync(TOKEN_PATH, 'utf8').trim();
+  } catch {
+    return null;
+  }
+}
 
 /**
  * entry: { platform, tool, decision, ruleId, reason, timestamp? }
@@ -36,6 +54,7 @@ function reportEvent(entry, settings = {}) {
 
   const port = settings.companionPort || DEFAULT_PORT;
   const body = JSON.stringify({ ...entry, timestamp: entry.timestamp || new Date().toISOString() });
+  const token = readToken();
 
   return new Promise((resolve) => {
     let settled = false;
@@ -46,6 +65,9 @@ function reportEvent(entry, settings = {}) {
       }
     };
 
+    const headers = { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) };
+    if (token) headers['X-Founder-Os-Token'] = token;
+
     let req;
     try {
       req = http.request(
@@ -54,7 +76,7 @@ function reportEvent(entry, settings = {}) {
           port,
           path: '/report',
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+          headers,
           timeout: TIMEOUT_MS,
         },
         (res) => {

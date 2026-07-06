@@ -358,6 +358,30 @@ function testDocSync() {
     );
   }
 
+  // [Unreleased] has no ### Added of its own, but a past release below it
+  // does -- regression: must warn/skip, not silently misfile the new entry
+  // into the already-tagged release's ### Added section.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(
+      path.join(dir, 'CHANGELOG.md'),
+      '## [Unreleased]\n\n### Fixed\n- something\n\n## [0.4.0] - 2026-07-04\n\n### Added\n- old feature\n'
+    );
+    commitAll(dir, 'a new unreleased commit');
+    const before = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    const { stderr, status } = runScript(
+      DOC_SYNC,
+      { tool_input: { command: 'git commit -m "a new unreleased commit"' } },
+      { cwd: dir }
+    );
+    const after = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    check(
+      'doc-sync: does not fall through into a past release\'s ### Added when [Unreleased] has none of its own',
+      status === 0 && before === after && !after.includes('a new unreleased commit') && stderr.includes('### Added'),
+      `stderr=${JSON.stringify(stderr)}\n      after=${JSON.stringify(after)}`
+    );
+  }
+
   // Fail-safe: node missing mid-script -- exits 0, loud stderr warning, not a crash.
   {
     const dir = mkTempRepo();

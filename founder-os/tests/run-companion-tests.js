@@ -86,7 +86,7 @@ function getFreePort() {
   });
 }
 
-function httpRequestJson(port, method, urlPath, body) {
+function httpRequestJson(port, method, urlPath, body, extraHeaders = {}) {
   return new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : undefined;
     const req = http.request(
@@ -95,7 +95,10 @@ function httpRequestJson(port, method, urlPath, body) {
         port,
         path: urlPath,
         method,
-        headers: data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {},
+        headers: {
+          ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
+          ...extraHeaders,
+        },
       },
       (res) => {
         let chunks = '';
@@ -248,13 +251,31 @@ async function testServerBackfillFromAuditLog() {
 
 async function testServerHttpEndpoints() {
   const port = await getFreePort();
-  const { server } = createServer();
+  const { server, token } = createServer();
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
   try {
-    const reportRes = await httpRequestJson(port, 'POST', '/report', { platform: 'claude-code', tool: 'Bash', decision: 'ask', reason: 'test' });
-    check('server: POST /report accepts a well-formed event', reportRes.status === 204, JSON.stringify(reportRes));
+    const noTokenRes = await httpRequestJson(port, 'POST', '/report', { platform: 'claude-code', tool: 'Bash', decision: 'ask' });
+    check('server: POST /report with no token responds 401', noTokenRes.status === 401, JSON.stringify(noTokenRes));
 
-    const badReportRes = await httpRequestJson(port, 'POST', '/report', undefined);
+    const wrongTokenRes = await httpRequestJson(
+      port,
+      'POST',
+      '/report',
+      { platform: 'claude-code', tool: 'Bash', decision: 'ask' },
+      { 'X-Founder-Os-Token': 'not-the-real-token' }
+    );
+    check('server: POST /report with a wrong token responds 401', wrongTokenRes.status === 401, JSON.stringify(wrongTokenRes));
+
+    const reportRes = await httpRequestJson(
+      port,
+      'POST',
+      '/report',
+      { platform: 'claude-code', tool: 'Bash', decision: 'ask', reason: 'test' },
+      { 'X-Founder-Os-Token': token }
+    );
+    check('server: POST /report with the correct token accepts a well-formed event', reportRes.status === 204, JSON.stringify(reportRes));
+
+    const badReportRes = await httpRequestJson(port, 'POST', '/report', undefined, { 'X-Founder-Os-Token': token });
     check('server: POST /report with no body responds 400 rather than crashing', badReportRes.status === 400, JSON.stringify(badReportRes));
 
     const events = await readSseEvents(port, { waitMs: 200 });

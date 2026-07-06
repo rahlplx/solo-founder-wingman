@@ -26,6 +26,9 @@
     { "description": "unscoped DELETE FROM without WHERE asks for confirmation", "toolName": "Bash", "command": "psql -c \"DELETE FROM users\"", "expectDecision": "ask" },
     { "description": "scoped UPDATE with WHERE is allowed", "toolName": "Bash", "command": "psql -c \"UPDATE users SET admin = true WHERE id = 5\"", "expectDecision": "allow" },
     { "description": "scoped DELETE with WHERE is allowed", "toolName": "Bash", "command": "psql -c \"DELETE FROM users WHERE id = 5\"", "expectDecision": "allow" },
+    { "description": "unscoped DELETE followed by a trailing comment mentioning WHERE still asks (regression: prior bypass via unrelated trailing text)", "toolName": "Bash", "command": "psql -c \"DELETE FROM users\" # see WHERE clause docs for other tables", "expectDecision": "ask" },
+    { "description": "unscoped UPDATE followed by a semicolon-separated command mentioning where still asks (regression: prior bypass via unrelated trailing text)", "toolName": "Bash", "command": "psql -c \"UPDATE users SET admin = true\"; echo where are my files", "expectDecision": "ask" },
+    { "description": "scoped DELETE with WHERE before a trailing comment is still allowed", "toolName": "Bash", "command": "psql -c \"DELETE FROM users WHERE id = 5\" # cleanup", "expectDecision": "allow" },
 
     { "description": "terraform destroy blocks", "toolName": "Bash", "command": "terraform destroy -auto-approve", "expectDecision": "deny" },
     { "description": "kubectl delete namespace asks for confirmation", "toolName": "Bash", "command": "kubectl delete namespace staging", "expectDecision": "ask" },

@@ -143,6 +143,26 @@
       }
     },
     {
+      "description": "flags contains g (disallowed: would make cached-RegExp matching stateful)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-flags-global", "category": "test", "pattern": "\\bdanger\\b", "flags": "g", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
+      "description": "flags contains y (disallowed: would make cached-RegExp matching stateful)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "bad-flags-sticky", "category": "test", "pattern": "\\bdanger\\b", "flags": "y", "action": "block", "message": "example" }
+        ]
+      }
+    },
+    {
       "description": "keywords is a string instead of an array",
       "expectValid": false,
       "doc": {

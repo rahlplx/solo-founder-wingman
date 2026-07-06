@@ -5,3 +5,4 @@ node_modules/
 *.log
 .DS_Store
 founder-os/.audit/
+founder-os/companion/.report-token

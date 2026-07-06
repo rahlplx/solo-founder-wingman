@@ -23,7 +23,11 @@
 const REQUIRED_RULE_FIELDS = ['id', 'category', 'pattern', 'action', 'message'];
 const VALID_ACTIONS = ['block', 'confirm'];
 const VALID_SCOPES = ['bash', 'any'];
-const VALID_FLAG_CHARS = /^[gimsuy]*$/;
+// g/y excluded deliberately: matchRule() reuses a cached RegExp across
+// calls via .test(), so a global/sticky flag would make matching stateful
+// (alternating true/false across identical inputs via lastIndex) instead
+// of a pure per-string check. See schema/policy.schema.json's "flags".
+const VALID_FLAG_CHARS = /^[imsu]*$/;
 const ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 // Strings no legitimate destructive/secrets/prod-boundary rule should ever
@@ -96,7 +100,10 @@ function validateRule(rule, index, seenIds) {
   }
 
   if (rule.flags !== undefined && (typeof rule.flags !== 'string' || !VALID_FLAG_CHARS.test(rule.flags))) {
-    errors.push(`${where}: "flags" must only contain valid RegExp flag characters (got: ${JSON.stringify(rule.flags)})`);
+    errors.push(
+      `${where}: "flags" must only contain i/m/s/u (got: ${JSON.stringify(rule.flags)}) -- g/y are disallowed ` +
+        'because matchRule() reuses a cached RegExp across calls, which would make a global/sticky match stateful'
+    );
   }
 
   if (rule.keywords !== undefined) {

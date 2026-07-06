@@ -15,9 +15,19 @@
  * adapters/opencode/plugin.ts's decisions are finalized before
  * report-event.js's reportEvent() call ever reaches here. There is no
  * endpoint here that accepts a decision back, on purpose.
+ *
+ * POST /report requires a shared-secret token (see generateToken() below)
+ * because binding to 127.0.0.1 only keeps this off the network, not off
+ * the local machine -- without a token, any other local process, or any
+ * page open in the founder's own browser, could POST a fabricated event
+ * via a same-origin-safelisted fetch() and no CORS preflight, undermining
+ * the one property this dashboard exists for (a trustworthy record of
+ * what the policy engine actually decided). report-event.js reads the
+ * same token file to authenticate its real reports.
  */
 
 const http = require('http');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
@@ -27,6 +37,29 @@ const { DEFAULT_PORT } = require('./report-event.js');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SETTINGS_PATH = path.join(__dirname, '..', 'settings.json');
+const TOKEN_PATH = path.join(__dirname, '.report-token');
+
+/**
+ * Generates a fresh token on every server start and persists it to disk
+ * (mode 0600) so report-event.js -- running in a separate, later process,
+ * e.g. bin/policy-check.js invoked per hook call -- can read the same
+ * value. Regenerating on each start (rather than reusing a stale file) is
+ * deliberate: a leftover token from a previous, now-dead server should
+ * never authenticate against a new one.
+ */
+function generateToken() {
+  const token = crypto.randomBytes(24).toString('hex');
+  fs.writeFileSync(TOKEN_PATH, token, { mode: 0o600 });
+  return token;
+}
+
+function isAuthorized(req, token) {
+  const provided = req.headers['x-founder-os-token'];
+  if (typeof provided !== 'string' || provided.length === 0) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(token);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -103,7 +136,12 @@ function readBody(req) {
   });
 }
 
-async function handleReport(req, res, bus) {
+async function handleReport(req, res, bus, token) {
+  if (!isAuthorized(req, token)) {
+    res.writeHead(401);
+    res.end(JSON.stringify({ error: 'missing or invalid X-Founder-Os-Token' }));
+    return;
+  }
   try {
     const raw = await readBody(req);
     const entry = JSON.parse(raw);
@@ -124,16 +162,17 @@ async function handleReport(req, res, bus) {
 function createServer() {
   const bus = createEventBus();
   backfill(bus);
+  const token = generateToken();
 
   const server = http.createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/events') return handleEvents(req, res, bus);
-    if (req.method === 'POST' && req.url === '/report') return handleReport(req, res, bus);
+    if (req.method === 'POST' && req.url === '/report') return handleReport(req, res, bus, token);
     if (req.method === 'GET') return serveStatic(req, res);
     res.writeHead(405);
     res.end('Method not allowed');
   });
 
-  return { server, bus };
+  return { server, bus, token };
 }
 
 if (require.main === module) {
