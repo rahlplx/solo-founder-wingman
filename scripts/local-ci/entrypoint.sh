@@ -46,13 +46,17 @@ run_job() {
 # shellcheck disable=SC2317
 job_validate_json() {
   set -e
-  for f in founder-os/policy.json founder-os/.mcp.json founder-os/hooks/hooks.json \
-           founder-os/.claude-plugin/plugin.json founder-os/settings.json \
-           founder-os/schema/policy.schema.json \
-           .claude-plugin/marketplace.json; do
-    echo "Validating $f"
-    node -e "JSON.parse(require('fs').readFileSync('$f'))"
-  done
+  # File list lives in scripts/local-ci/jobs.json's validateJsonFiles, also
+  # read by .github/workflows/ci.yml's validate-json step -- single source
+  # of truth so the two can't drift apart (see
+  # founder-os/tests/run-ci-drift-tests.js).
+  node -e '
+    const jobs = require("./scripts/local-ci/jobs.json");
+    for (const f of jobs.validateJsonFiles) {
+      console.log("Validating " + f);
+      JSON.parse(require("fs").readFileSync(f));
+    }
+  '
 }
 
 # shellcheck disable=SC2317
@@ -78,7 +82,14 @@ job_policy_tests() {
 # shellcheck disable=SC2317
 job_shellcheck() {
   set -e
-  shellcheck founder-os/bin/*.sh
+  # Directory lives in scripts/local-ci/jobs.json's shellcheckDir; ci.yml's
+  # shellcheck job passes the same directory to a GitHub Action input
+  # (which, unlike this bash script, can't read jobs.json at runtime), so
+  # that side is drift-checked instead of unified -- see
+  # founder-os/tests/run-ci-drift-tests.js.
+  local dir
+  dir="$(node -e 'process.stdout.write(require("./scripts/local-ci/jobs.json").shellcheckDir)')"
+  shellcheck "$dir"/*.sh
 }
 
 run_job "validate-json" bash -c "$(declare -f job_validate_json); job_validate_json"

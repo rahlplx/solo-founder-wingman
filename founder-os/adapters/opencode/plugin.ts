@@ -127,11 +127,21 @@ function extractCheckableStrings(toolName: string, args: Record<string, unknown>
       if (typeof newString === "string") strings.push({ value: newString, origin: "file" });
     }
   }
-  if (toolName === "apply_patch") {
-    // apply_patch's payload carries the whole diff (Add/Update/Delete File
-    // markers) in patchText -- without this, patch-based edits bypass every
-    // policy check entirely, unlike edit/write.
-    const patchText = args.patchText;
+  if (toolName === "apply_patch" || toolName === "patch") {
+    // Tool name and field here are a defensive best guess, not confirmed
+    // live against a real OpenCode session the way every other claim in
+    // this file's module comment says was verified -- public OpenCode
+    // issues describe both an "apply_patch" tool (Codex-model
+    // compatibility) and a separate native "patch" tool, with
+    // model-conditional substitution between them and edit/write that
+    // isn't fully documented. Checking both tool names and several
+    // plausible field names only ever widens what gets caught, the same
+    // keyword-invariant principle policy.json's own rules rely on, so this
+    // can reduce a bypass risk but can't introduce a new false negative.
+    // See FAILURE-MODES.md #30 for the residual verification gap this
+    // doesn't close: if the real tool ends up using a name/field entirely
+    // absent from this list, patch-based edits still bypass every check.
+    const patchText = args.patchText ?? args.patch ?? args.diff ?? args.input;
     if (typeof patchText === "string") strings.push({ value: patchText, origin: "file" });
   }
   return strings;

@@ -163,6 +163,16 @@
       }
     },
     {
+      "description": "rule has an unknown field (regression: a typo'd field name like \"keywrods\" used to pass silently)",
+      "expectValid": false,
+      "doc": {
+        "version": "1.0.0",
+        "rules": [
+          { "id": "typo-field", "category": "test", "pattern": "\\bdanger\\b", "action": "block", "message": "example", "keywrods": ["danger"] }
+        ]
+      }
+    },
+    {
       "description": "keywords is a string instead of an array",
       "expectValid": false,
       "doc": {

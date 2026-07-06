@@ -382,6 +382,61 @@ function testDocSync() {
     );
   }
 
+  // Regression: an unrelated command that merely *contains* the substring
+  // "git commit" (e.g. this exact text inside an echo) must not re-append
+  // an already-synced commit a second time -- the old "commit age <= 10s"
+  // heuristic couldn't tell this apart from a real recent commit.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n### Added\n');
+    commitAll(dir, 'a real commit');
+    const first = runScript(DOC_SYNC, { tool_input: { command: 'git commit -m "a real commit"' } }, { cwd: dir });
+    const afterFirst = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    const occurrencesAfterFirst = afterFirst.split('a real commit').length - 1;
+
+    runScript(DOC_SYNC, { tool_input: { command: 'echo "remember to git commit later"' } }, { cwd: dir });
+    const afterSecond = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    const occurrencesAfterSecond = afterSecond.split('a real commit').length - 1;
+
+    check(
+      'doc-sync: a later command merely containing the substring "git commit" does not re-append the same commit',
+      first.status === 0 && occurrencesAfterFirst === 1 && occurrencesAfterSecond === 1,
+      `afterFirst=${JSON.stringify(afterFirst)}\n      afterSecond=${JSON.stringify(afterSecond)}`
+    );
+  }
+
+  // Regression: the hook firing twice for the very same HEAD (e.g. a
+  // duplicate PostToolUse invocation) must not duplicate the entry either
+  // -- dedup is keyed off the actual commit SHA, not a time window.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n### Added\n');
+    commitAll(dir, 'a once-only commit');
+    runScript(DOC_SYNC, { tool_input: { command: 'git commit -m "a once-only commit"' } }, { cwd: dir });
+    runScript(DOC_SYNC, { tool_input: { command: 'git commit -m "a once-only commit"' } }, { cwd: dir });
+    const after = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    const occurrences = after.split('a once-only commit').length - 1;
+    check('doc-sync: two hook invocations for the same HEAD append only once', occurrences === 1, after);
+  }
+
+  // Regression: a commit subject containing a literal backslash sequence
+  // must survive byte-for-byte -- awk -v (and command-line var=value)
+  // assignments run backslash-escape processing on the value, which used
+  // to turn "\n"/"\t"/a Windows path into real control characters.
+  {
+    const dir = mkTempRepo();
+    fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '## [Unreleased]\n\n### Added\n');
+    const message = 'fix path C:\\new\\test and \\t marker';
+    commitAll(dir, message);
+    const { status } = runScript(DOC_SYNC, { tool_input: { command: `git commit -m "${message}"` } }, { cwd: dir });
+    const after = fs.readFileSync(path.join(dir, 'CHANGELOG.md'), 'utf8');
+    check(
+      'doc-sync: a commit subject containing literal backslashes is appended unmangled',
+      status === 0 && after.includes(message),
+      after
+    );
+  }
+
   // Fail-safe: node missing mid-script -- exits 0, loud stderr warning, not a crash.
   {
     const dir = mkTempRepo();

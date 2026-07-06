@@ -480,3 +480,34 @@ for per-project differences instead of a nonexistent project file.
 platforms' conventions (Claude Code and OpenCode both support project-
 scoped config), not verified against Codex directly — exactly the kind of
 assumption this live-testing pass exists to catch.
+
+## 30. OpenCode's patch-tool name/field is an unverified assumption — MEDIUM — OPEN (mitigated, not closed)
+
+**What was found:** `adapters/opencode/plugin.ts`'s `extractCheckableStrings`
+only intercepted a patch-shaped edit if `toolName === "apply_patch"`
+reading `args.patchText` — hardcoded from inference, not confirmed live
+against a real OpenCode session the way every other cross-adapter claim
+in this file was (see #20, #27, #29, all found by actually running
+OpenCode). Public OpenCode issues describe both an `apply_patch` tool
+(Codex-model compatibility) and a separate native `patch` tool, with
+model-conditional substitution between them and edit/write that isn't
+fully documented. If the real tool/field differs from what's hardcoded,
+a patch-based edit bypasses every policy check entirely — the exact
+failure this code exists to prevent.
+
+**Mitigation applied (not a full fix):** `extractCheckableStrings` now
+checks both `apply_patch` and `patch` tool names, and falls back across
+`patchText`/`patch`/`diff`/`input` field names. Per the same
+keyword-invariant principle `policy.json`'s own rules rely on
+(`AGENTS.md`'s "keywords only ever widen what gets checked, never
+narrow it"), widening the set of names/fields checked can only reduce
+the bypass risk, never introduce a new false negative — but it's still
+a best guess, not a verified fact. Regression coverage:
+`tests/policy-cases.json`'s `NativePatch` case exercises the `patch`
+tool name with a `diff` field.
+
+**Why this is OPEN, not FIXED:** closing this for real requires the same
+live-testing pass #20/#27/#29 got — running a real OpenCode session with
+a patch-capable model and observing the actual `tool.execute.before`
+payload shape. Revisit and downgrade to FIXED (or correct the
+name/field entirely) once that's done.

@@ -115,12 +115,30 @@ function serveStatic(req, res) {
   });
 }
 
-function handleEvents(req, res, bus) {
+// A generous ceiling for how many browser tabs/EventSource connections one
+// founder could plausibly have open at once -- not a real usage limit, just
+// a backstop against unbounded socket/fd growth from a runaway or malicious
+// number of concurrent /events connections.
+const MAX_SSE_CLIENTS = 50;
+
+function handleEvents(req, res, bus, sseClients) {
+  if (sseClients.size >= MAX_SSE_CLIENTS) {
+    res.writeHead(503, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: `too many concurrent /events connections (max ${MAX_SSE_CLIENTS})` }));
+    return;
+  }
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
   });
+  // Node batches headers with the first res.write() rather than sending
+  // them immediately on writeHead() -- with an empty event bus (a fresh
+  // server, nothing reported yet), that first write might not happen for a
+  // long time, leaving a subscriber's client hanging with no response at
+  // all. flushHeaders() sends them right away regardless of body content.
+  res.flushHeaders();
 
   const send = (event) => {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
@@ -128,17 +146,68 @@ function handleEvents(req, res, bus) {
   for (const event of bus.getHistory()) send(event);
 
   const unsubscribe = bus.subscribe(send);
-  req.on('close', unsubscribe);
+  sseClients.add(res);
+  req.on('close', () => {
+    unsubscribe();
+    sseClients.delete(res);
+  });
 }
 
-function readBody(req) {
+// Generous for a single policy-decision event ({ platform, tool, decision,
+// ruleId, reason, timestamp } -- see report-event.js), but bounded so an
+// arbitrarily large POST (accidental or otherwise) can't grow memory
+// unbounded or block the event loop parsing a huge string.
+const MAX_REPORT_BODY_BYTES = 16 * 1024;
+
+function readBody(req, maxBytes) {
   return new Promise((resolve, reject) => {
     let data = '';
+    let bytes = 0;
+    let rejected = false;
     req.setEncoding('utf8');
-    req.on('data', (chunk) => (data += chunk));
-    req.on('end', () => resolve(data));
+    req.on('data', (chunk) => {
+      // Deliberately does not req.destroy() here -- req and res share the
+      // same underlying socket, so destroying it would also prevent the
+      // 413 response below from ever reaching the client (a raw connection
+      // reset instead of a real HTTP response). Draining the remaining
+      // bytes without buffering them keeps memory bounded while still
+      // letting the request complete normally so the response can be sent.
+      if (rejected) return;
+      bytes += Buffer.byteLength(chunk);
+      if (bytes > maxBytes) {
+        rejected = true;
+        reject(Object.assign(new Error(`request body exceeds ${maxBytes} bytes`), { statusCode: 413 }));
+        return;
+      }
+      data += chunk;
+    });
+    req.on('end', () => {
+      if (!rejected) resolve(data);
+    });
     req.on('error', reject);
   });
+}
+
+// Only server-side backfill() (from bin/audit-log.js's durable,
+// interventions-only log) may tag an event as "audit-log-backfill" -- the
+// frontend uses that tag to honestly caveat provenance (backfilled history
+// is narrower-fidelity than live events). Without rejecting a
+// client-submitted "source" field, a POST could impersonate that tag.
+const RESERVED_EVENT_FIELDS = ['source'];
+
+function validateEvent(entry) {
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+    return 'event must be a JSON object';
+  }
+  for (const field of RESERVED_EVENT_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(entry, field)) {
+      return `event must not set reserved field "${field}"`;
+    }
+  }
+  if (typeof entry.platform !== 'string' || typeof entry.tool !== 'string' || typeof entry.decision !== 'string') {
+    return 'event must have string "platform", "tool", and "decision" fields';
+  }
+  return null;
 }
 
 async function handleReport(req, res, bus, token) {
@@ -148,13 +217,19 @@ async function handleReport(req, res, bus, token) {
     return;
   }
   try {
-    const raw = await readBody(req);
+    const raw = await readBody(req, MAX_REPORT_BODY_BYTES);
     const entry = JSON.parse(raw);
+    const validationError = validateEvent(entry);
+    if (validationError) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: validationError }));
+      return;
+    }
     bus.addEvent(entry);
     res.writeHead(204);
     res.end();
   } catch (err) {
-    res.writeHead(400);
+    res.writeHead(err.statusCode || 400);
     res.end(JSON.stringify({ error: err.message }));
   }
 }
@@ -168,9 +243,10 @@ function createServer() {
   const bus = createEventBus();
   backfill(bus);
   const token = generateToken();
+  const sseClients = new Set();
 
   const server = http.createServer((req, res) => {
-    if (req.method === 'GET' && req.url === '/events') return handleEvents(req, res, bus);
+    if (req.method === 'GET' && req.url === '/events') return handleEvents(req, res, bus, sseClients);
     if (req.method === 'POST' && req.url === '/report') return handleReport(req, res, bus, token);
     if (req.method === 'GET') return serveStatic(req, res);
     res.writeHead(405);
@@ -201,4 +277,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createServer };
+module.exports = { createServer, MAX_SSE_CLIENTS, MAX_REPORT_BODY_BYTES };

@@ -1,5 +1,15 @@
 {
-  "_comment": "Canonical, ordered list of npm scripts that make up the policy-tests job, shared between .github/workflows/ci.yml and scripts/local-ci/entrypoint.sh so the two stop hand-drifting (a change to one used to have nothing keeping the other in sync). entrypoint.sh reads this file directly and loops over it. ci.yml keeps its own explicit per-script steps (for readable, individually-attributed GitHub Actions UI output), but founder-os/tests/run-ci-drift-tests.js asserts ci.yml's steps still match this list exactly, in order.",
+  "_comment": "Canonical, ordered lists shared between .github/workflows/ci.yml and scripts/local-ci/entrypoint.sh so the two stop hand-drifting (a change to one used to have nothing keeping the other in sync). entrypoint.sh reads this file directly and loops over it; founder-os/tests/run-ci-drift-tests.js asserts ci.yml's steps/config still match it exactly. validateJsonFiles and shellcheckDir are read at runtime by both ci.yml's single-shell-block steps and entrypoint.sh, so those two can't drift at all (single source of truth); policyTestsScripts can't do the same trick since ci.yml keeps its own explicit per-script steps for readable, individually-attributed GitHub Actions UI output -- that one is drift-checked instead of unified.",
+  "validateJsonFiles": [
+    "founder-os/policy.json",
+    "founder-os/.mcp.json",
+    "founder-os/hooks/hooks.json",
+    "founder-os/.claude-plugin/plugin.json",
+    "founder-os/settings.json",
+    "founder-os/schema/policy.schema.json",
+    ".claude-plugin/marketplace.json"
+  ],
+  "shellcheckDir": "founder-os/bin",
   "policyTestsScripts": [
     "validate:policy-schema",
     "check:js-syntax",

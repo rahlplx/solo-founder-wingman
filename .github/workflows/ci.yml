@@ -26,15 +26,18 @@ jobs:
         with:
           persist-credentials: false
       - name: Validate policy.json, .mcp.json, hooks.json, plugin.json, settings.json
+        # File list lives in scripts/local-ci/jobs.json's validateJsonFiles,
+        # also read by scripts/local-ci/entrypoint.sh -- single source of
+        # truth so the two can't drift apart (see founder-os/tests/run-ci-drift-tests.js).
         run: |
           set -euo pipefail
-          for f in founder-os/policy.json founder-os/.mcp.json founder-os/hooks/hooks.json \
-                   founder-os/.claude-plugin/plugin.json founder-os/settings.json \
-                   founder-os/schema/policy.schema.json \
-                   .claude-plugin/marketplace.json; do
-            echo "Validating $f"
-            node -e "JSON.parse(require('fs').readFileSync('$f'))"
-          done
+          node -e '
+            const jobs = require("./scripts/local-ci/jobs.json");
+            for (const f of jobs.validateJsonFiles) {
+              console.log("Validating " + f);
+              JSON.parse(require("fs").readFileSync(f));
+            }
+          '
 
   policy-tests:
     name: Policy engine tests (both adapters, same fixture)

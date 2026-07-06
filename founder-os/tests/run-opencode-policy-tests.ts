@@ -21,18 +21,20 @@ const FIXTURE_PATH = join(__dirname, "policy-cases.json");
 
 interface TestCase {
   description: string;
-  toolName: "Bash" | "Edit" | "Write" | "MultiEdit" | "ApplyPatch";
+  toolName: "Bash" | "Edit" | "Write" | "MultiEdit" | "ApplyPatch" | "NativePatch";
   command?: string;
   filePath?: string;
   content?: string;
   newString?: string;
   patchText?: string;
+  diff?: string;
   platforms?: string[];
   expectDecision: "allow" | "ask" | "deny";
 }
 
 function toOpenCodeToolName(toolName: TestCase["toolName"]): string {
   if (toolName === "ApplyPatch") return "apply_patch";
+  if (toolName === "NativePatch") return "patch";
   return toolName.toLowerCase();
 }
 
@@ -42,6 +44,9 @@ function buildArgs(testCase: TestCase): Record<string, unknown> {
   }
   if (testCase.toolName === "ApplyPatch") {
     return { patchText: testCase.patchText };
+  }
+  if (testCase.toolName === "NativePatch") {
+    return { diff: testCase.diff };
   }
   const args: Record<string, unknown> = { filePath: testCase.filePath };
   if (testCase.content !== undefined) args.content = testCase.content;

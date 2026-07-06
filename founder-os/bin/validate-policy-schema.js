@@ -21,6 +21,8 @@
  */
 
 const REQUIRED_RULE_FIELDS = ['id', 'category', 'pattern', 'action', 'message'];
+const OPTIONAL_RULE_FIELDS = ['scope', 'flags', 'keywords'];
+const ALLOWED_RULE_FIELDS = new Set([...REQUIRED_RULE_FIELDS, ...OPTIONAL_RULE_FIELDS]);
 const VALID_ACTIONS = ['block', 'confirm'];
 const VALID_SCOPES = ['bash', 'any'];
 // g/y excluded deliberately: matchRule() reuses a cached RegExp across
@@ -71,6 +73,17 @@ function validateRule(rule, index, seenIds) {
 
   if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
     return [`${where}: must be an object`];
+  }
+
+  // Matches schema/policy.schema.json's additionalProperties:false: a
+  // typo'd field name (e.g. "keywrods" instead of "keywords") should fail
+  // loudly rather than silently being ignored and falling back to that
+  // field's default, which is exactly what ajv already caught that this
+  // hand-rolled validator previously didn't.
+  for (const field of Object.keys(rule)) {
+    if (!ALLOWED_RULE_FIELDS.has(field)) {
+      errors.push(`${where}: unknown field "${field}" (allowed: ${[...ALLOWED_RULE_FIELDS].join(', ')})`);
+    }
   }
 
   for (const field of REQUIRED_RULE_FIELDS) {

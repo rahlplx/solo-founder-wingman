@@ -6,7 +6,7 @@
       "id": "destructive-rm-rf",
       "category": "destructive_ops",
       "scope": "bash",
-      "pattern": "\\brm\\b(?=.*(?:^|\\s)(-[a-zA-Z]*[rR][a-zA-Z]*\\b|--recursive\\b))(?=.*(?:^|\\s)(-[a-zA-Z]*f[a-zA-Z]*\\b|--force\\b))",
+      "pattern": "\\brm\\b(?=[^;&|`\\r\\n]*(?:^|\\s)(-[a-zA-Z]*[rR][a-zA-Z]*\\b|--recursive\\b))(?=[^;&|`\\r\\n]*(?:^|\\s)(-[a-zA-Z]*f[a-zA-Z]*\\b|--force\\b))",
       "action": "block",
       "message": "This deletes files/folders permanently with no undo. What exactly is being deleted and why?",
       "keywords": ["rm"]
